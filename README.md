@@ -81,7 +81,7 @@ The journal is the book side of the project: a retelling of the novel in new wor
 
 **Accessibility.** Everything can be played from the keyboard. The journal is plain HTML and works with a screen reader; the house does not, which is why *or just read* exists. `prefers-reduced-motion` turns off the head bob, the flicker, the shaking and most of the grain.
 
-**Testing.** `node check.mjs` verifies the things that break silently when the text is edited: note numbers in order, every reference has its note, the cipher still spells its sentence, every page is in the journal's order, every texture and model the script asks for exists, and no em dashes anywhere. `node tools/walk.mjs` plays the whole walk (every room, the hallway, the Hall, the stairs, the torn house, the last pages, the ending) in headless Chromium and screenshots each scene.
+**Testing.** `node check.mjs` verifies the things that break silently when the text is edited: note numbers in order, every reference has its note, the cipher still spells its sentence, every page is in the journal's order, every texture and model the script asks for exists, and no em dashes anywhere. `node tools/walk.mjs` plays the whole walk (every room, the hallway, the Hall, the stairs, the torn house, the last pages, the ending) in headless Chromium and screenshots each scene; `node tools/resume.mjs` opens the house with saved progress at every stage of the story and checks that it comes back as it was.
 
 **Tools.** Written and built with the help of Claude (Anthropic), used as a coding and writing partner; every scene was checked by hand.
 
@@ -101,6 +101,7 @@ tools/models.sh     fetches and optimizes the models (gltf-transform)
 tools/extract.mjs   cuts named props out of whole-room glTF scenes
 assets/CREDITS.md   every asset, its author, source and licence
 tools/walk.mjs      the headless walkthrough (playwright-core)
+tools/resume.mjs    reopens a saved house at every stage of the story
 og.jpg              link preview, a still from the living room
 ```
 

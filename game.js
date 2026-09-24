@@ -712,6 +712,7 @@
     /* ---------- the house ---------- */
 
     const H = 2.5, TH = 0.16;
+    const shadowRef = { x: NaN, z: NaN, yaw: 0, pitch: 0, y: 0, frame: 0, force: true }; // declared first: a resumed game reopens doors before the frame loop exists
     const colliders = []; // { x0, x1, z0, z1, mesh? }
     const houseWalls = [];
     const box = (w, h, d, mat, x, y, z, uvs) => {
@@ -1539,7 +1540,6 @@
     }
     let iris = 1;
     let bobPhase = 0;
-    const shadowRef = { x: NaN, z: NaN, yaw: 0, pitch: 0, y: 0, frame: 0 };
     function render(dt) {
       scene.fog.density += (fogTarget - scene.fog.density) * (1 - Math.exp(-dt * 2));
       const reg = P.region;
