@@ -6,6 +6,7 @@ import { mkdirSync } from 'node:fs';
 const OUT = new URL('../.cache/shots/', import.meta.url).pathname; mkdirSync(OUT, { recursive: true });
 const browser = await chromium.launch({ executablePath: process.env.CHROME || undefined, args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--no-sandbox'] });
 const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+await page.addInitScript(low => { if (low) localStorage.setItem('atl:low', 'true'); }, !!process.env.LOW); // LOW=1 for software rendering: no bloom, pixel ratio 1
 const errors = [];
 page.on('console', m => { if (m.type() === 'error' || m.type() === 'warning') errors.push(`${m.type()}: ${m.text()}`); });
 page.on('pageerror', e => errors.push('pageerror: ' + e.message));
@@ -56,20 +57,17 @@ await page.waitForTimeout(1500);
 await page.screenshot({ path: OUT + '11d-relay-out.png' });
 console.log('tom found', await page.evaluate(() => ATL.found.has('tom')));
 await shot('12-well', G.x - 4.2, G.z, -Math.PI / 2, -.35);
-// down the stairs
-await page.evaluate(([x, z]) => { ATL.teleport(x - 2.4, z, -Math.PI / 2); }, [G.x, G.z]);
-await page.waitForTimeout(400);
-await page.evaluate(() => ATL.keys.add('f'));
-await page.waitForFunction(() => ATL.stair.active && ATL.stair.depth() > 1.2, null, { timeout: 90000 });
-await page.evaluate(() => ATL.keys.delete('f'));
-await page.waitForTimeout(500);
+// onto the top step from the lip, then down the helix to the markers
+await page.evaluate(([x, z]) => { ATL.teleport(x - 3.4, z + .2, ATL.yawTo(1, 0)); ATL.keys.add('f'); }, [G.x, G.z]);
+await page.waitForFunction(() => ATL.stair.active, null, { timeout: 150000 });
+await page.evaluate(() => { ATL.keys.delete('f'); ATL.stairTo(7.8); const a = Math.atan2(ATL.P.z - ATL.G.stair.z, ATL.P.x - ATL.G.stair.x); ATL.look(ATL.yawTo(-Math.sin(a), Math.cos(a)), -.35); });
+await page.waitForTimeout(900);
 await page.screenshot({ path: OUT + '13-stairs.png' });
 console.log('stair', await page.evaluate(() => ({ active: ATL.stair.active, depth: ATL.stair.depth().toFixed(1), target: ATL.target() })));
-// tear the house
-await page.evaluate(() => { ATL.unlock('ch7', false); });
-await page.evaluate(() => { ATL.stair.s = 0.4; ATL.keys.add('b'); });
-await page.waitForFunction(() => !ATL.stair.active, null, { timeout: 90000 });
-await page.evaluate(() => ATL.keys.delete('b'));
+// read Holloway's tape (ch7), then climb out at the top: the house tears
+await page.evaluate(() => { ATL.unlock('ch7', false); ATL.stairTo(0); ATL.look(ATL.yawTo(-1, 0), 0); ATL.keys.add('f'); });
+await page.waitForFunction(() => !ATL.stair.active, null, { timeout: 60000 });
+await page.evaluate(() => ATL.keys.delete('f'));
 await page.waitForTimeout(600);
 console.log('after stairs', await page.evaluate(() => ({ active: ATL.stair.active, torn: ATL.S.torn, x: ATL.P.x.toFixed(1) })));
 await shot('14-torn-living', 8.2, 11.5, -Math.PI / 2 + .4, .05, 1200);

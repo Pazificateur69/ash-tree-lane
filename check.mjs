@@ -7,6 +7,10 @@ const html = read('./index.html'), css = read('./style.css'), js = read('./game.
 const fail = [];
 const ok = (cond, msg) => { if (!cond) fail.push(msg); };
 
+// the script must parse (it is a classic script, so Function() is the right parser)
+try { new Function(js); } catch (e) { fail.push('game.js does not parse: ' + e.message); }
+// every recording the script asks for exists
+for (const [, name] of js.matchAll(/: '([a-z_0-9]+)'(?=[,} ])/g)) if (/^(wind|night|timbers|door_close|door_open|page|creak_\d|step_(wood|stone)_\d)$/.test(name)) ok(existsSync(new URL('./assets/sounds/' + name + '.ogg', import.meta.url)), `sound ${name} is missing`);
 // no em or en dashes anywhere
 for (const [name, src] of Object.entries({ html, css, js })) ok(!/[–—]/.test(src), `${name}: contains an em or en dash`);
 

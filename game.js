@@ -137,12 +137,14 @@
     jPage.focus({ preventScroll: true });
   }
   function openJournal(id) {
+    Sound.play('page', { gain: .45, room: false, detune: .1 });
     journal.hidden = false;
     document.body.classList.add('journal-open');
     game.pause();
     showPage(id || ORDER.find(has));
   }
   function closeJournal() {
+    Sound.play('page', { gain: .35, room: false, rate: 1.1, detune: .1 });
     closeAllLeaves();
     journal.hidden = true;
     document.body.classList.remove('journal-open');
@@ -270,8 +272,31 @@
      ================================================================ */
 
   const Sound = {
-    ctx: null, out: null, bus: null, send: null, buf: null, drone: null, wind: null,
+    ctx: null, out: null, bus: null, send: null, buf: null, drone: null, wind: null, night: null, timbers: null,
+    bufs: {}, loading: false,
     on: store.get('sound', true),
+    FILES: { wind: 'wind', night: 'night', timbers: 'timbers', door_close: 'door_close', door_open: 'door_open', page: 'page', creak_1: 'creak_1', creak_2: 'creak_2', creak_3: 'creak_3',
+      step_wood_0: 'step_wood_0', step_wood_1: 'step_wood_1', step_wood_2: 'step_wood_2', step_wood_3: 'step_wood_3', step_wood_4: 'step_wood_4',
+      step_stone_0: 'step_stone_0', step_stone_1: 'step_stone_1', step_stone_2: 'step_stone_2', step_stone_3: 'step_stone_3', step_stone_4: 'step_stone_4' },
+    load() { // the recordings, all of them CC0: footsteps, creaks, doors, a page, the wind, a summer night, old timbers
+      if (this.loading || !this.ctx) return; this.loading = true;
+      for (const [key, file] of Object.entries(this.FILES)) fetch(`assets/sounds/${file}.ogg`).then(r => r.ok ? r.arrayBuffer() : Promise.reject(r.status)).then(b => this.ctx.decodeAudioData(b)).then(buf => { this.bufs[key] = buf; }).catch(() => {});
+    },
+    play(key, { gain = 1, rate = 1, room = true, at = 0, detune = 0 } = {}) {
+      const buf = this.bufs[key]; if (!buf || !this.ctx) return false;
+      const c = this.ctx, s = c.createBufferSource(), g = c.createGain();
+      s.buffer = buf; s.playbackRate.value = rate * (1 + detune * (Math.random() * 2 - 1)); g.gain.value = gain;
+      s.connect(g).connect(room ? this.bus : this.out); s.start(c.currentTime + at);
+      return true;
+    },
+    loop(key, level, fade = 3) {
+      const buf = this.bufs[key]; if (!buf || !this.ctx) return null;
+      const c = this.ctx, s = c.createBufferSource(), g = c.createGain(), t = c.currentTime;
+      s.buffer = buf; s.loop = true; g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(level, t + fade);
+      s.connect(g).connect(this.out); s.start(t, Math.random() * buf.duration);
+      return { src: s, g };
+    },
+    stopLoop(l, fade = 2) { if (!l) return; const t = this.ctx.currentTime; l.g.gain.cancelScheduledValues(t); l.g.gain.setTargetAtTime(0, t, fade / 3); l.src.stop(t + fade * 2); },
     init() {
       if (this.ctx) return;
       const AC = window.AudioContext || window.webkitAudioContext;
@@ -314,9 +339,12 @@
         this.drone = null;
       }
     },
-    weather(on) { // wind against the house, only while the house is a house
+    weather(on) { // wind against the house and a summer night outside, only while the house is a house
       if (!this.ctx) return;
       const t = this.ctx.currentTime;
+      if (on && !this.wind && this.bufs.wind) { this.wind = this.loop('wind', .32, 5); this.wind.real = true; this.night = this.loop('night', .16, 6); return; }
+      if (!on && this.wind && this.wind.real) { this.stopLoop(this.wind, 3); this.stopLoop(this.night, 3); this.wind = null; this.night = null; return; }
+      if (on && this.wind && this.wind.real) return;
       if (on && !this.wind) {
         const src = this.noise(), bp = this.ctx.createBiquadFilter(), g = this.ctx.createGain(), lfo = this.ctx.createOscillator(), lg = this.ctx.createGain();
         bp.type = 'bandpass'; bp.frequency.value = 420; bp.Q.value = .6;
@@ -328,6 +356,11 @@
         const { src, g, lfo } = this.wind;
         g.gain.setTargetAtTime(0, t, 1.5); src.stop(t + 6); lfo.stop(t + 6); this.wind = null;
       }
+    },
+    groan(on) { // the old timbers of a house that has moved
+      if (!this.ctx) return;
+      if (on && !this.timbers && this.bufs.timbers) this.timbers = this.loop('timbers', .22, 6);
+      else if (!on && this.timbers) { this.stopLoop(this.timbers, 3); this.timbers = null; }
     },
     growl(level = 1) {
       if (!this.ctx) return;
@@ -347,6 +380,7 @@
     },
     step(hard, echo) {
       if (!this.ctx) return;
+      if (this.play((hard ? 'step_stone_' : 'step_wood_') + Math.floor(Math.random() * 5), { gain: hard ? .55 : .38, rate: hard ? .92 : 1, detune: .08 })) return;
       const c = this.ctx, t = c.currentTime;
       const burst = (at, gain) => {
         const s = this.noise(), f = c.createBiquadFilter(), g = c.createGain();
@@ -360,6 +394,7 @@
     },
     creak() {
       if (!this.ctx) return;
+      if (this.play('creak_' + (1 + Math.floor(Math.random() * 3)), { gain: .7, rate: .85, detune: .1 })) return;
       const c = this.ctx, t = c.currentTime;
       const o = c.createOscillator(), f = c.createBiquadFilter(), g = c.createGain(), l = c.createOscillator(), lg = c.createGain();
       o.type = 'sawtooth';
@@ -459,7 +494,7 @@
 
   async function start() {
     if (game.started) return;
-    Sound.init(); Sound.resume();
+    Sound.init(); Sound.resume(); Sound.load();
     const btn = $('#enter');
     btn.disabled = true; btn.textContent = 'Opening';
     let libs;
@@ -471,7 +506,8 @@
         import('three/addons/postprocessing/ShaderPass.js'),
         import('three/addons/postprocessing/UnrealBloomPass.js'),
         import('three/addons/postprocessing/OutputPass.js'),
-        import('three/addons/loaders/GLTFLoader.js')
+        import('three/addons/loaders/GLTFLoader.js'),
+        import('three/addons/loaders/RGBELoader.js')
       ]);
     } catch (e) {
       console.error(e);
@@ -483,8 +519,8 @@
     $('.threshold').hidden = true;
     $('#game').hidden = false;
     document.body.classList.add('in-house');
-    const [THREE, { EffectComposer }, { RenderPass }, { ShaderPass }, { UnrealBloomPass }, { OutputPass }, { GLTFLoader }] = libs;
-    buildWorld({ THREE, EffectComposer, RenderPass, ShaderPass, UnrealBloomPass, OutputPass, GLTFLoader });
+    const [THREE, { EffectComposer }, { RenderPass }, { ShaderPass }, { UnrealBloomPass }, { OutputPass }, { GLTFLoader }, { RGBELoader }] = libs;
+    buildWorld({ THREE, EffectComposer, RenderPass, ShaderPass, UnrealBloomPass, OutputPass, GLTFLoader, RGBELoader });
   }
 
   const HALL_BEATS = [
@@ -509,21 +545,23 @@
     [28, 'If there is a bottom, it is not for you.']
   ];
 
-  function buildWorld({ THREE, EffectComposer, RenderPass, ShaderPass, UnrealBloomPass, OutputPass, GLTFLoader }) {
+  function buildWorld({ THREE, EffectComposer, RenderPass, ShaderPass, UnrealBloomPass, OutputPass, GLTFLoader, RGBELoader }) {
     const canvas = $('.game-canvas');
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
-    const dpr = () => Math.min(devicePixelRatio || 1, Q.low ? 1 : 1.5);
+    let prCap = Q.low ? 1 : 1.25; // lowered automatically when frames come slowly
+    const dpr = () => Math.min(devicePixelRatio || 1, prCap);
     renderer.setPixelRatio(dpr());
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = .86;
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.VSMShadowMap;
+    renderer.shadowMap.autoUpdate = false; renderer.shadowMap.needsUpdate = true;
     const maxAniso = Math.min(8, renderer.capabilities.getMaxAnisotropy());
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x020203);
     scene.fog = new THREE.FogExp2(0x070608, 0.05);
-    const camera = new THREE.PerspectiveCamera(70, 1, 0.05, 320);
+    const camera = new THREE.PerspectiveCamera(70, 1, 0.05, 62); // the fog has eaten everything long before this
     camera.rotation.order = 'YXZ';
 
     /* ---------- assets ---------- */
@@ -532,30 +570,36 @@
     let loadDone = false;
     manager.onProgress = (url, n, total) => { if (loadDone) return; const p = Math.round(n / total * 100); hud.loadBar.style.width = p + '%'; hud.loadText.textContent = `The house is loading · ${p}%`; };
     const texLoader = new THREE.TextureLoader(manager);
-    const T = (name, { srgb = false, repeat = [1, 1] } = {}) => {
-      const t = texLoader.load('assets/textures/' + name);
-      t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(repeat[0], repeat[1]);
-      t.anisotropy = maxAniso;
+    THREE.Cache.enabled = true; // one download per file
+    const texCache = new Map();
+    const T = (name, { srgb = false, repeat = [1, 1], aniso = 4 } = {}) => { // one texture per file and tiling; the same one is reused wherever it recurs
+      const key = `${name}|${repeat[0]}|${repeat[1]}|${aniso}`;
+      let t = texCache.get(key);
+      if (t) return t;
+      t = texLoader.load('assets/textures/' + name);
+      t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(repeat[0], repeat[1]); t.anisotropy = Math.min(aniso, maxAniso);
       if (srgb) t.colorSpace = THREE.SRGBColorSpace;
+      texCache.set(key, t);
       return t;
     };
-    const sky = new THREE.CubeTextureLoader(manager).setPath('assets/sky/').load(['dark-s_px.jpg', 'dark-s_nx.jpg', 'dark-s_py.jpg', 'dark-s_ny.jpg', 'dark-s_pz.jpg', 'dark-s_nz.jpg']);
-    sky.colorSpace = THREE.SRGBColorSpace;
+    // the night: a photographed sky for the windows, and its HDR twin for the light on everything that shines
+    const sky = texLoader.load('assets/sky/night.jpg'); sky.colorSpace = THREE.SRGBColorSpace; sky.anisotropy = 2; sky.wrapS = THREE.RepeatWrapping;
+    const skyHDR = new RGBELoader(manager).load('assets/sky/night_1k.hdr');
 
     const M = {
-      floor: new THREE.MeshStandardMaterial({ map: T('hardwood2_diffuse.jpg', { srgb: true, repeat: [4.6, 8.6] }), bumpMap: T('hardwood2_bump.jpg', { repeat: [4.6, 8.6] }), bumpScale: .012, roughnessMap: T('hardwood2_roughness.jpg', { repeat: [4.6, 8.6] }), roughness: 1, metalness: 0 }),
+      floor: new THREE.MeshStandardMaterial({ color: new THREE.Color(1.22, 1.18, 1.12), map: T('woodfloor_color.jpg', { srgb: true, repeat: [5.2, 4.8], aniso: 8 }), normalMap: T('woodfloor_normal.jpg', { repeat: [5.2, 4.8], aniso: 8 }), normalScale: new THREE.Vector2(.8, .8), roughnessMap: T('woodfloor_rough.jpg', { repeat: [5.2, 4.8] }), aoMap: T('woodfloor_ao.jpg', { repeat: [5.2, 4.8] }), aoMapIntensity: .9, roughness: 1, metalness: 0 }),
       wall: new THREE.MeshStandardMaterial({ map: T('plaster_color.jpg', { srgb: true }), normalMap: T('plaster_normal.jpg'), normalScale: new THREE.Vector2(.6, .6), roughnessMap: T('plaster_rough.jpg'), roughness: 1 }),
       ceiling: new THREE.MeshStandardMaterial({ color: 0xf2eee6, map: T('plaster_color.jpg', { srgb: true, repeat: [6, 6] }), normalMap: T('plaster_normal.jpg', { repeat: [6, 6] }), normalScale: new THREE.Vector2(.4, .4), roughness: 1 }),
       pale: new THREE.MeshStandardMaterial({ color: 0xfffdf6, map: T('plaster_color.jpg', { srgb: true, repeat: [.5, .5] }), roughness: 1 }),
       ash: new THREE.MeshStandardMaterial({ map: T('ash_color.jpg', { srgb: true }), normalMap: T('ash_normal.jpg'), normalScale: new THREE.Vector2(.5, .5), roughnessMap: T('ash_rough.jpg'), roughness: 1 }),
       ashFloor: new THREE.MeshStandardMaterial({ color: 0x9a9a9e, map: T('ash_color.jpg', { srgb: true, repeat: [40, 24] }), normalMap: T('ash_normal.jpg', { repeat: [40, 24] }), normalScale: new THREE.Vector2(.35, .35), roughness: 1 }),
-      wood: new THREE.MeshStandardMaterial({ map: T('walnut_color.jpg', { srgb: true }), normalMap: T('walnut_normal.jpg'), normalScale: new THREE.Vector2(.5, .5), roughnessMap: T('walnut_rough.jpg'), roughness: 1 }),
-      linen: new THREE.MeshStandardMaterial({ map: T('linen_color.jpg', { srgb: true }), normalMap: T('linen_normal.jpg'), normalScale: new THREE.Vector2(.7, .7), roughness: 1 }),
+      wood: new THREE.MeshStandardMaterial({ map: T('mahogany_color.jpg', { srgb: true }), normalMap: T('mahogany_normal.jpg'), normalScale: new THREE.Vector2(.6, .6), roughnessMap: T('mahogany_rough.jpg'), roughness: 1 }),
+      linen: new THREE.MeshStandardMaterial({ map: T('linen_color.jpg', { srgb: true }), normalMap: T('linen_normal.jpg'), normalScale: new THREE.Vector2(.7, .7), roughnessMap: T('linen_rough.jpg'), roughness: 1 }),
       cardboard: new THREE.MeshStandardMaterial({ map: T('cardboard_color.jpg', { srgb: true }), normalMap: T('cardboard_normal.jpg'), normalScale: new THREE.Vector2(.5, .5), roughness: 1 }),
       leather: new THREE.MeshStandardMaterial({ map: T('leather_color.jpg', { srgb: true }), normalMap: T('leather_normal.jpg'), normalScale: new THREE.Vector2(.8, .8), roughnessMap: T('leather_rough.jpg'), roughness: 1 }),
       laminate: new THREE.MeshStandardMaterial({ map: T('laminate_color.jpg', { srgb: true }), roughness: .55 }),
       brick: new THREE.MeshStandardMaterial({ map: T('brick_diffuse.jpg', { srgb: true, repeat: [1.5, 1.5] }), bumpMap: T('brick_bump.jpg', { repeat: [1.5, 1.5] }), bumpScale: .02, roughnessMap: T('brick_roughness.jpg', { repeat: [1.5, 1.5] }), roughness: 1 }),
-      ground: new THREE.MeshStandardMaterial({ color: 0x0f120e, roughness: 1 }),
+      ground: new THREE.MeshStandardMaterial({ color: 0x6f6a60, map: T('ground_color.jpg', { srgb: true }), normalMap: T('ground_normal.jpg'), roughnessMap: T('ground_rough.jpg'), roughness: 1 }),
       tree: new THREE.MeshStandardMaterial({ color: 0x0a0b0a, roughness: 1 }),
       dark: new THREE.MeshStandardMaterial({ color: 0x1b1b1e, roughness: .8 }),
       plastic: new THREE.MeshStandardMaterial({ color: 0x2a2a2e, roughness: .45 }),
@@ -565,7 +609,7 @@
       brass: new THREE.MeshStandardMaterial({ color: 0xb08d4a, roughness: .35, metalness: .9 }),
       glass: new THREE.MeshPhysicalMaterial({ color: 0xbfd0e6, roughness: .04, metalness: 0, transparent: true, opacity: .16, envMapIntensity: 1.2, side: THREE.DoubleSide, depthWrite: false }),
       tape: new THREE.MeshStandardMaterial({ color: 0x151517, roughness: .45 }),
-      label: (name, emissive = 0x1a1a18) => new THREE.MeshStandardMaterial({ map: T(name, { srgb: true }), roughness: 1, emissive, emissiveMap: T(name, { srgb: true }), emissiveIntensity: 1 }),
+      label: (name, emissive = 0x1a1a18) => { const t = T(name, { srgb: true, aniso: 2 }); return new THREE.MeshStandardMaterial({ map: t, roughness: 1, emissive, emissiveMap: t, emissiveIntensity: 1 }); },
       paper: new THREE.MeshStandardMaterial({ color: 0xf1eee6, roughness: 1, side: THREE.DoubleSide, emissive: 0x2a2a28 }),
       yellow: new THREE.MeshStandardMaterial({ color: 0xd9b23a, roughness: .5, emissive: 0x2a2208 }),
       orange: new THREE.MeshStandardMaterial({ color: 0xff7a1a, emissive: 0xff5a00, emissiveIntensity: .8, roughness: 1, side: THREE.DoubleSide }),
@@ -583,9 +627,10 @@
     const pmrem = new THREE.PMREMGenerator(renderer);
     manager.onLoad = () => {
       if (loadDone) return; loadDone = true;
-      scene.environment = pmrem.fromCubemap(sky).texture; scene.environmentIntensity = .35;
+      skyHDR.mapping = THREE.EquirectangularReflectionMapping; scene.environment = pmrem.fromEquirectangular(skyHDR).texture; scene.environmentIntensity = .4; skyHDR.dispose();
       hud.loadBar.style.width = '100%';
-      setTimeout(() => { hud.loading.classList.add('off'); setTimeout(() => { hud.loading.hidden = true; }, 1400); arrive(); }, 300);
+      const go = () => { hud.loading.classList.add('off'); setTimeout(() => { hud.loading.hidden = true; }, 1400); arrive(); };
+      (renderer.compileAsync ? renderer.compileAsync(scene, camera) : Promise.resolve()).catch(() => {}).then(() => setTimeout(go, 200));
     };
 
     // world-space texture coordinates for the instanced gray walls: no seams, no tool marks
@@ -598,8 +643,12 @@
           #else
             vec4 wpUV = modelMatrix * vec4(position, 1.0);
           #endif
-          vec3 nUV = abs(normal);
-          vec2 wuv = nUV.x > 0.5 ? wpUV.zy : (nUV.z > 0.5 ? wpUV.xy : wpUV.xz);
+          #ifdef USE_INSTANCING
+            vec3 nUV = abs(normalize(mat3(modelMatrix) * (mat3(instanceMatrix) * normal)));
+          #else
+            vec3 nUV = abs(normalize(mat3(modelMatrix) * normal));
+          #endif
+          vec2 wuv = nUV.y > 0.5 ? wpUV.xz : (nUV.x > 0.5 ? wpUV.zy : wpUV.xy);
           wuv *= ${scale.toFixed(3)};
           vMapUv = wuv;
           #ifdef USE_NORMALMAP
@@ -612,6 +661,8 @@
       return m;
     };
     M.ashWorld = worldUV(M.ash);
+    M.ashWorld2 = worldUV(M.ash); M.ashWorld2.side = THREE.DoubleSide;
+    M.ashShaft = worldUV(M.ash); M.ashShaft.side = THREE.BackSide;
 
     // the walls of the house: one texture tile every 2.2 m, whatever the length of the wall
     function boxUV(geo, w, h, d, s = 2.2) {
@@ -625,8 +676,8 @@
 
     const gltf = new GLTFLoader();
     const models = { loaded: 0, wanted: 0 };
-    function model(name, { size, axis = 'y', x = 0, y = 0, z = 0, ry = 0, cast = true, onLoad } = {}) {
-      const g = new THREE.Group(); g.position.set(x, y, z); g.rotation.y = ry; scene.add(g);
+    function model(name, { size, axis = 'y', x = 0, y = 0, z = 0, ry = 0, cast = true, mirror = false, onLoad } = {}) {
+      const g = new THREE.Group(); g.position.set(x, y, z); g.rotation.y = ry; if (mirror) g.scale.z = -1; scene.add(g);
       models.wanted++;
       gltf.load(`assets/models/${name}.glb`, r => {
         const s = r.scene;
@@ -639,10 +690,10 @@
         s.position.set(-(box.min.x + box.max.x) / 2, -box.min.y, -(box.min.z + box.max.z) / 2);
         s.traverse(o => {
           if (!o.isMesh) return;
-          o.castShadow = cast; o.receiveShadow = true;
+          o.castShadow = cast; o.receiveShadow = size >= .6; // small things do not need to be drawn into the map
           const mats = Array.isArray(o.material) ? o.material : [o.material];
           for (const m of mats) {
-            if (m.transmission > 0) { m.transmission = 0; m.transparent = true; m.opacity = .4; m.depthWrite = false; } // no second render pass for glass
+            if (m.transmission > 0) { const glass = m.transmission > .85 || /glass/i.test(m.name || ''); m.transmission = 0; if (glass) { m.transparent = true; m.opacity = .4; m.depthWrite = false; } } // no second render pass for glass; a hint of it stays opaque
             if (m.map) m.map.anisotropy = maxAniso;
             m.envMapIntensity = .5;
           }
@@ -652,6 +703,11 @@
       }, undefined, e => { models.loaded++; console.warn('model', name, e); });
       return g;
     }
+
+    const G = { x0: 14, z0: -30, W: 270, D: 160, T: .5, tiles: null, hallStart: 144, hallJ0: 10, hallJ1: 150, stair: { i: 204, j: 80 }, meshes: [], floor: null, ceiling: null, built: false, short: false };
+    G.stair.x = G.x0 + (G.stair.i + .5) * G.T; G.stair.z = G.z0 + (G.stair.j + .5) * G.T;
+    const STEP_A = Math.PI * 2 / 16, RISE = .19, N_STEPS = 224, N_ABOVE = 80, R_IN = .58, R_OUT = 2.95, WELL = 3.1, HALF_STEP = STEP_A * .54;
+    let camY = 1.6;
 
     /* ---------- the house ---------- */
 
@@ -733,26 +789,29 @@
     const roof = new THREE.Mesh(new THREE.BoxGeometry(15, .3, 14), M.dark); roof.position.set(7, H + .21, 6.5); scene.add(roof); // clear of the ceiling, or the two would fight
 
     // outside: the yard, the trees, and the night
-    const ground = shadowed(new THREE.Mesh(new THREE.PlaneGeometry(400, 400), M.ground), false, true);
-    ground.rotation.x = -Math.PI / 2; ground.position.set(7, -.03, 6.5); scene.add(ground);
+    const groundShape = new THREE.Shape(); groundShape.moveTo(-193, -206.5); groundShape.lineTo(207, -206.5); groundShape.lineTo(207, 193.5); groundShape.lineTo(-193, 193.5); groundShape.closePath();
+    const groundHole = new THREE.Path(); groundHole.absarc(G.stair.x, -G.stair.z, WELL + 1, 0, Math.PI * 2, true); groundShape.holes.push(groundHole); // the well goes down through the yard as well
+    const groundGeo = new THREE.ShapeGeometry(groundShape, 24); { const uv = groundGeo.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) / 3.6, uv.getY(i) / 3.6); }
+    const ground = shadowed(new THREE.Mesh(groundGeo, M.ground), false, true);
+    ground.rotation.x = -Math.PI / 2; ground.position.set(0, -.03, 0); scene.add(ground);
     const brickBase = new THREE.Mesh(new THREE.BoxGeometry(14.4, .6, 13.4), M.brick); brickBase.position.set(7, -.315, 6.5); scene.add(brickBase); // its top sits just under the floorboards
     const porch = box(2.4, .16, 1.2, M.brick, 2.5, .08, 13.7); block(2.5, 13.7, 2.4, 1.2);
     const treeRand = rng(5);
-    for (let i = 0; i < 26; i++) {
-      const a = treeRand() * Math.PI * 2, r = 12 + treeRand() * 26;
+    for (let i = 0; i < 14; i++) {
+      const a = treeRand() * Math.PI * 2, r = 13 + treeRand() * 22;
       const x = 7 + Math.cos(a) * r, z = 6.5 + Math.sin(a) * r;
       if (x > 12 && z > -36 && z < 56) continue; // the hallway will need that ground
-      const h = 5 + treeRand() * 6;
+      const h = 7 + treeRand() * 7;
       const trunk = new THREE.Mesh(new THREE.CylinderGeometry(.14, .22, h, 6), M.tree); trunk.position.set(x, h / 2, z); scene.add(trunk);
       const crown = new THREE.Mesh(new THREE.SphereGeometry(1.8 + treeRand() * 1.6, 7, 6), M.tree); crown.position.set(x, h - .5, z); crown.scale.y = 1.5; scene.add(crown);
     }
-    const skyDome = new THREE.Mesh(new THREE.SphereGeometry(180, 32, 16), new THREE.ShaderMaterial({
-      uniforms: { sky: { value: sky }, center: { value: new THREE.Vector3(7, 1.6, 6.5) } },
+    const skyDome = new THREE.Mesh(new THREE.SphereGeometry(52, 48, 24), new THREE.ShaderMaterial({
+      uniforms: { sky: { value: sky }, center: { value: new THREE.Vector3(7, 1.6, 6.5) }, turn: { value: 1.9 } },
       vertexShader: 'uniform vec3 center; varying vec3 vDir; void main(){ vDir = (modelMatrix * vec4(position, 1.0)).xyz - center; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
-      fragmentShader: 'uniform samplerCube sky; varying vec3 vDir; void main(){ vec3 d = normalize(vDir); vec3 c = textureCube(sky, d).rgb; float h = smoothstep(-0.03, 0.14, d.y); gl_FragColor = vec4(c * h * 0.85, 1.0); }',
+      fragmentShader: 'uniform sampler2D sky; uniform float turn; varying vec3 vDir; void main(){ vec3 d = normalize(vDir); vec2 uv = vec2(atan(d.z, d.x) / 6.2831853 + 0.5 + turn, asin(clamp(d.y, -1.0, 1.0)) / 3.1415927 + 0.5); vec3 c = texture2D(sky, uv).rgb; c = c * 0.2 + pow(c, vec3(8.0)) * 0.4; gl_FragColor = vec4(c, 1.0); }', // the glow of a town over the hill stays faint; the stars stay stars
       side: THREE.BackSide, depthWrite: false
     }));
-    skyDome.position.set(7, 0, 6.5); skyDome.renderOrder = -10; scene.add(skyDome);
+    skyDome.position.set(7, 0, 6.5); skyDome.renderOrder = 10; scene.add(skyDome);
 
     // pale rectangles where the photographs hung
     for (const [x, y, z, w, h, ry] of [[10, 1.65, .09, .5, .4, 0], [13.91, 1.6, 7, .6, .45, -Math.PI / 2], [6.09, 1.7, 8.5, .42, .55, Math.PI / 2], [.09, 1.6, 3, .35, .45, Math.PI / 2], [3, 1.65, 5.21, .5, .38, Math.PI], [9, 1.6, 4.09, .45, .35, 0]]) {
@@ -761,11 +820,17 @@
     }
 
     // furniture: living room
-    model('glam_velvet_sofa', { size: 2.2, axis: 'x', x: 10.5, z: 6.2, ry: 0 }); block(10.5, 6.2, 2.2, 1);
+    model('leather_sofa', { size: 2.4, axis: 'x', x: 10.5, z: 6.2, ry: 0 }); block(10.5, 6.2, 2.4, 1);
+    model('cushion', { size: .42, x: 9.55, y: .42, z: 6.22, ry: .35 });
+    model('rug', { size: 2.3, axis: 'x', x: 10.5, y: .004, z: 8.2, cast: false });
     model('sheen_chair', { size: .72, x: 12.9, z: 9.6, ry: -2.1 }); block(12.9, 9.6, .8, .8);
-    const coffeeTable = box(1.1, .04, .6, M.wood, 10.5, .4, 7.9, 1); for (const [dx, dz] of [[-.5, -.25], [.5, -.25], [-.5, .25], [.5, .25]]) box(.04, .4, .04, M.wood, 10.5 + dx, .2, 7.9 + dz); block(10.5, 7.9, 1.1, .6);
-    model('coffee_mug', { size: .1, x: 10.2, y: .42, z: 7.8, ry: .8 });
-    model('glass_hurricane_candle_holder', { size: .26, x: 10.85, y: .42, z: 8.05 });
+    box(1.1, .04, .6, M.wood, 10.5, .4, 7.9, 1); for (const [dx, dz] of [[-.5, -.25], [.5, -.25], [-.5, .25], [.5, .25]]) box(.04, .4, .04, M.wood, 10.5 + dx, .2, 7.9 + dz); block(10.5, 7.9, 1.1, .6);
+    model('coffee_mug', { size: .1, x: 10.15, y: .42, z: 7.78, ry: .8 });
+    model('magazine', { size: .33, axis: 'x', x: 10.45, y: .421, z: 8.0, ry: .2, cast: false });
+    model('vase_flowers', { size: .22, x: 10.88, y: .42, z: 7.82 });
+    model('glass_hurricane_candle_holder', { size: .26, x: 10.15, y: .45, z: 12.5 });
+    model('books', { size: .5, x: 10.85, y: .45, z: 12.55, ry: Math.PI / 2 });
+    model('curtain', { size: 2.3, x: 13.62, z: 10.15, ry: Math.PI / 2, cast: false });
     model('antique_camera', { size: 1.55, x: 12.6, z: 11.6, ry: -2.4 }); block(12.6, 11.6, .7, .7);
     const floorLamp = model('lights_punctual_lamp', { size: 1.75, x: 7.1, z: 12.2, ry: .6 }); block(7.1, 12.2, .5, .5);
     model('diffuse_transmission_plant', { size: .85, x: 13.4, z: 5.9, cast: false }); block(13.4, 5.9, .6, .6);
@@ -789,9 +854,12 @@
     box(.5, .4, .5, M.cardboard, 8.9, .2, 12.5).rotation.y = .5;
 
     // kitchen
-    solid(box(.6, .9, 4, M.wood, .6, .45, 7.4, 1), .6, 4); box(.66, .04, 4.06, M.laminate, .6, .92, 7.4);           // counter along the west wall
-    solid(box(3.6, .9, .6, M.wood, 2.4, .45, 5.6, 1), 3.6, .6); box(3.66, .04, .66, M.laminate, 2.4, .92, 5.6);       // counter along the hall wall
-    box(.5, .02, .4, M.metal, 1.2, .95, 5.6); // the sink
+    model('cupboards', { size: 4.75, axis: 'z', x: .42, z: 7.9 }); block(.45, 7.9, .75, 4.75); // the run along the west wall of the original kitchen
+    model('worktops', { size: 4.75, axis: 'z', x: .5, y: .9, z: 7.9, cast: false });
+    model('cooker', { size: .88, axis: 'x', x: 3.75, z: 5.85, ry: Math.PI }); block(3.75, 5.85, .9, 1.1);
+    model('hood', { size: .49, axis: 'x', x: 3.75, y: 1.5, z: 5.75, ry: Math.PI });
+    model('microwave', { size: .6, axis: 'x', x: .5, y: .92, z: 9.7, ry: Math.PI / 2 });
+    model('plant_small', { size: .5, x: .45, y: .92, z: 6.3, cast: false });
     solid(box(.75, 1.75, .7, M.white, 5.5, .875, 5.75), .75, .7); box(.02, .3, .02, M.metal, 5.14, 1.1, 5.55);      // the fridge and its handle
     const kitchenTable = box(1.4, .05, .9, M.wood, 3.6, .74, 8.6, 1); for (const [dx, dz] of [[-.62, -.38], [.62, -.38], [-.62, .38], [.62, .38]]) box(.05, .72, .05, M.wood, 3.6 + dx, .36, 8.6 + dz); block(3.6, 8.6, 1.4, .9);
     for (const [x, z, ry] of [[2.7, 8.6, Math.PI / 2], [4.5, 8.6, -Math.PI / 2], [3.6, 9.5, 0]]) { // chairs
@@ -802,18 +870,31 @@
       block(x, z, .45, .45);
     }
     model('coffee_mug', { size: .1, x: 3.2, y: .765, z: 8.45, ry: 2.2 });
+    model('teacup', { size: .15, axis: 'x', x: 4.0, y: .765, z: 8.35, ry: .6 });
 
     // bedroom (west) and the children's room (east)
-    solid(box(1.6, .5, 2, M.linen, 2.4, .3, 1.5), 1.6, 2); box(1.6, .9, .1, M.wood, 2.4, .45, .55, 1); box(1.5, .12, .5, M.linen, 2.4, .56, .85);
-    solid(box(.5, .55, .5, M.wood, 1.3, .275, .5, 1), .5, .5);
+    model('bed', { size: 2.07, axis: 'max', x: 2.4, z: 1.2, ry: Math.PI / 2 }); block(2.4, 1.2, 1.62, 2.07);
+    model('blanket', { size: .5, axis: 'x', x: 2.62, y: .55, z: 1.9, ry: .4 });
+    model('nightstand', { size: .6, axis: 'x', x: 1.3, z: .4 }); block(1.3, .4, .6, .32);
+    model('nightstand', { size: .6, axis: 'x', x: 3.5, z: .4 }); block(3.5, .4, .6, .32);
+    model('picture', { size: .19, x: 3.5, y: .34, z: .38, ry: .3 });
+    model('bedside_lamp', { size: .24, x: 1.3, y: .34, z: .36, onLoad: sc => sc.traverse(o => { if (o.isMesh && /emitter/i.test(o.name)) { o.material = o.material.clone(); o.material.emissive = new THREE.Color(0xffe2b8); o.material.emissiveIntensity = 1.6; } }) });
+    const bedsideLight = new THREE.PointLight(0xffd6a0, 1.1, 3.2, 2); bedsideLight.position.set(1.3, .58, .36); scene.add(bedsideLight);
+    model('curtain', { size: 2.3, x: 2.05, z: .34, cast: false });
+    model('curtain', { size: 2.3, x: .34, z: 1.2, ry: Math.PI / 2, cast: false });
     model('chair_damask_purplegold', { size: .7, x: 5.6, z: 1, ry: -.9 }); block(5.6, 1, .7, .7);
-    solid(box(.95, .45, 2, M.linen, 12, .3, 1.5), .95, 2); box(.95, .3, 2, M.linen, 12, 1.5, 1.5); box(.05, 1.7, 2, M.wood, 12.5, .85, 1.5, 1); box(.05, 1.7, 2, M.wood, 11.5, .85, 1.5, 1);
-    solid(box(.7, .45, .5, M.cardboard, 9, .225, 1), .7, .5);
+    model('bed', { size: 1.8, axis: 'max', x: 12.4, z: 1.05, ry: Math.PI / 2 }); block(12.4, 1.05, 1.4, 1.8);
+    model('bed', { size: 1.8, axis: 'max', x: 9.6, z: 1.05, ry: Math.PI / 2 }); block(9.6, 1.05, 1.4, 1.8);
+    model('nightstand', { size: .55, axis: 'x', x: 11, z: .38 }); block(11, .38, .55, .3);
+    model('bedside_lamp', { size: .22, x: 11, y: .31, z: .34 });
+    model('boxes', { size: .73, axis: 'z', x: 8.3, z: 3.2, ry: .2 }); block(8.3, 3.2, .5, .75);
+    model('book', { size: .21, axis: 'x', x: 9.9, y: .01, z: 1.6, ry: .7, cast: false });
     model('toy_car', { size: .17, axis: 'z', x: 9.9, z: 2.3, ry: 1.9 });
     for (let k = 0; k < 4; k++) { const b = box(.16, .16, .16, k % 2 ? M.yellow : M.plastic, 8.3 + hash(k) * .5, .08, 2.6 + hash(k + 4) * .5); b.rotation.y = hash(k + 8) * 2; }
 
     // foyer
     solid(box(.9, .75, .4, M.wood, 4.5, .375, 12.6, 1), .9, .4);
+    model('vase_small', { size: .3, x: 4.78, y: .75, z: 12.58 });
     for (let k = 0; k < 4; k++) { const hook = new THREE.Mesh(new THREE.CylinderGeometry(.01, .01, .06, 6), M.brass); hook.position.set(5.2 + k * .22, 1.7, 12.88); hook.rotation.x = Math.PI / 2; scene.add(hook); }
     box(.02, .02, 2.4, M.wood, .09, 1.2, 11.7).rotation.z = 0; // a shelf line
 
@@ -828,7 +909,7 @@
     // lamps
     const lamps = [];
     const lampAt = (x, y, z, i, shade = true) => {
-      const l = new THREE.PointLight(0xffc98a, i, 10, 2); l.position.set(x, y, z); scene.add(l);
+      const l = new THREE.PointLight(0xffc98a, i, 7.5, 2); l.position.set(x, y, z); scene.add(l);
       const b = new THREE.Mesh(new THREE.SphereGeometry(.05, 8, 6), M.bulb); b.position.copy(l.position); scene.add(b);
       if (shade) { const s = new THREE.Mesh(new THREE.CylinderGeometry(.16, .22, .18, 14, 1, true), new THREE.MeshStandardMaterial({ color: 0xf0e6d0, roughness: 1, side: THREE.DoubleSide, emissive: 0x554a33 })); s.position.set(x, y + .04, z); scene.add(s); const stem = new THREE.Mesh(new THREE.CylinderGeometry(.01, .01, H - y - .1, 6), M.brass); stem.position.set(x, (H + y) / 2, z); scene.add(stem); }
       lamps.push({ light: l, bulb: b, base: i, flicker: hash(x * 3 + z) < .35 });
@@ -842,7 +923,7 @@
     const torch = new THREE.SpotLight(0xfff5e8, 34, 34, .58, .62, 1.75);
     torch.position.set(.14, -.12, .05);
     torch.castShadow = true; torch.shadow.mapSize.set(Q.low ? 1024 : 2048, Q.low ? 1024 : 2048);
-    torch.shadow.camera.near = .12; torch.shadow.camera.far = 34; torch.shadow.bias = -.0002; torch.shadow.normalBias = .02; torch.shadow.radius = Q.low ? 2 : 4; torch.shadow.blurSamples = Q.low ? 6 : 10;
+    torch.shadow.camera.near = .12; torch.shadow.camera.far = 34; torch.shadow.bias = -.0002; torch.shadow.normalBias = .02; torch.shadow.radius = Q.low ? 2 : 4; torch.shadow.blurSamples = Q.low ? 6 : 8;
     torch.map = cookie;
     camera.add(torch); camera.add(torch.target); torch.target.position.set(.05, -.3, -1);
     const halo = new THREE.PointLight(0xffe6c8, 1.4, 6, 2); // what the beam scatters back around you
@@ -859,12 +940,10 @@
       const p = new THREE.Points(g, mat); p.frustumCulled = false; scene.add(p); return p;
     }
     const motesTime = { value: 0 };
-    motes(Q.low ? 400 : 900, 3, r => [r() * 14, .2 + r() * 2.1, r() * 13]);
+    const houseDust = motes(Q.low ? 400 : 900, 3, r => [r() * 14, .2 + r() * 2.1, r() * 13]);
 
     /* ---------- the hallway that should not be there ---------- */
 
-    const G = { x0: 14, z0: -30, W: 270, D: 160, T: .5, tiles: null, hallStart: 144, hallJ0: 10, hallJ1: 150, stair: { i: 204, j: 80 }, mesh: null, floor: null, ceiling: null, built: false, short: false };
-    G.stair.x = G.x0 + (G.stair.i + .5) * G.T; G.stair.z = G.z0 + (G.stair.j + .5) * G.T;
     const tileAt = (i, j) => (i < 0 || j < 0 || i >= G.W || j >= G.D) ? 1 : G.tiles[i + j * G.W];
     function genMaze(short) {
       const { W, D } = G; const t = G.tiles = new Uint8Array(W * D).fill(1);
@@ -885,60 +964,89 @@
       for (let j = G.stair.j - 6; j <= G.stair.j + 6; j++) for (let i = G.stair.i - 6; i <= G.stair.i + 6; i++) if ((i - G.stair.i) ** 2 + (j - G.stair.j) ** 2 <= 30) t[i + j * W] = 2;
     }
     let hallDust = null, hallLid = null;
+    const mazeTileGeo = new THREE.BoxGeometry(.5, 2.6, .5);
     function buildMaze(short) {
-      if (G.mesh) { scene.remove(G.mesh, G.floor, G.ceiling); G.mesh.geometry.dispose(); }
+      for (const m of G.meshes) { scene.remove(m); m.dispose(); }
+      G.meshes = [];
+      if (G.floor) { scene.remove(G.floor, G.ceiling); G.floor.geometry.dispose(); G.ceiling.geometry.dispose(); }
       genMaze(short);
       G.short = short;
       const { W, D, T, x0, z0 } = G;
-      const cells = [];
+      // only the tiles that face an open cell are built, in chunks of 24 x 24 tiles so the frustum can cull whole blocks
+      const CH = 24, chunks = new Map();
       for (let j = 0; j < D; j++) for (let i = 0; i < W; i++) {
         if (G.tiles[i + j * W] !== 1) continue;
-        if (tileAt(i - 1, j) !== 1 || tileAt(i + 1, j) !== 1 || tileAt(i, j - 1) !== 1 || tileAt(i, j + 1) !== 1) cells.push(i, j);
+        if (tileAt(i - 1, j) !== 1 || tileAt(i + 1, j) !== 1 || tileAt(i, j - 1) !== 1 || tileAt(i, j + 1) !== 1) {
+          const key = ((i / CH) | 0) * 1000 + ((j / CH) | 0);
+          if (!chunks.has(key)) chunks.set(key, []);
+          chunks.get(key).push(i, j);
+        }
       }
-      const geo = new THREE.BoxGeometry(T, 2.6, T);
-      const mesh = new THREE.InstancedMesh(geo, M.ashWorld, cells.length / 2);
       const mat = new THREE.Matrix4();
-      for (let k = 0; k < cells.length; k += 2) { mat.makeTranslation(x0 + (cells[k] + .5) * T, 1.3, z0 + (cells[k + 1] + .5) * T); mesh.setMatrixAt(k / 2, mat); }
-      mesh.instanceMatrix.needsUpdate = true;
-      shadowed(mesh); scene.add(mesh); G.mesh = mesh;
+      for (const cells of chunks.values()) {
+        const mesh = new THREE.InstancedMesh(mazeTileGeo, M.ashWorld, cells.length / 2);
+        for (let k = 0; k < cells.length; k += 2) { mat.makeTranslation(x0 + (cells[k] + .5) * T, 1.3, z0 + (cells[k + 1] + .5) * T); mesh.setMatrixAt(k / 2, mat); }
+        mesh.instanceMatrix.needsUpdate = true;
+        mesh.computeBoundingSphere();
+        shadowed(mesh); scene.add(mesh); G.meshes.push(mesh);
+      }
       const fw = W * T, fd = D * T;
-      G.floor = shadowed(new THREE.Mesh(new THREE.PlaneGeometry(fw, fd), M.ashFloor), false, true);
-      G.floor.rotation.x = -Math.PI / 2; G.floor.position.set(x0 + fw / 2, 0, z0 + fd / 2); scene.add(G.floor);
+      // the floor is one sheet with a round hole in it: the well of the staircase
+      const floorShape = new THREE.Shape(); floorShape.moveTo(x0, -(z0 + fd)); floorShape.lineTo(x0 + fw, -(z0 + fd)); floorShape.lineTo(x0 + fw, -z0); floorShape.lineTo(x0, -z0); floorShape.closePath();
+      const hole = new THREE.Path(); hole.absarc(G.stair.x, -G.stair.z, WELL, 0, Math.PI * 2, true); floorShape.holes.push(hole);
+      G.floor = shadowed(new THREE.Mesh(new THREE.ShapeGeometry(floorShape, 48), M.ashWorld2), false, true);
+      G.floor.rotation.x = -Math.PI / 2; scene.add(G.floor);
       const cw = G.hallStart * T;
-      G.ceiling = shadowed(new THREE.Mesh(new THREE.PlaneGeometry(cw, fd), M.ashFloor), false, true);
+      G.ceiling = shadowed(new THREE.Mesh(new THREE.PlaneGeometry(cw, fd), M.ashWorld), false, true);
       G.ceiling.rotation.x = Math.PI / 2; G.ceiling.position.set(x0 + cw / 2, 2.6, z0 + fd / 2); scene.add(G.ceiling);
       if (!hallLid) { hallLid = new THREE.Mesh(new THREE.PlaneGeometry(fw, fd), M.black); hallLid.rotation.x = Math.PI / 2; hallLid.position.set(x0 + fw / 2, 60, z0 + fd / 2); scene.add(hallLid); }
-      if (hallDust) { scene.remove(hallDust); hallDust.geometry.dispose(); }
+      if (hallDust) { scene.remove(hallDust); hallDust.geometry.dispose(); hallDust.material.dispose(); }
       hallDust = motes(Q.low ? 1200 : 3000, 77, r => [x0 + (G.hallStart + 2 + r() * (W - G.hallStart - 6)) * T, .2 + r() * 9, z0 + (G.hallJ0 + 2 + r() * (G.hallJ1 - G.hallJ0 - 4)) * T]);
       G.built = true;
     }
-    // the well of the staircase in the Great Hall
-    const well = new THREE.Mesh(new THREE.CircleGeometry(3.1, 48), M.black);
-    well.rotation.x = -Math.PI / 2; well.position.set(G.stair.x, .012, G.stair.z); well.visible = false; scene.add(well);
-    const lip = new THREE.Mesh(new THREE.RingGeometry(3.1, 3.35, 48), M.dark);
+    // the lip of the well in the Great Hall
+    const lip = new THREE.Mesh(new THREE.RingGeometry(WELL, WELL + .25, 48), new THREE.MeshStandardMaterial({ color: 0x1b1b1e, roughness: .8, side: THREE.DoubleSide }));
     lip.rotation.x = -Math.PI / 2; lip.position.set(G.stair.x, .014, G.stair.z); lip.visible = false; scene.add(lip);
+    // the shaft the stairs go down: a wall far enough off that the light rarely reaches it
+    const shaft = new THREE.Mesh(new THREE.CylinderGeometry(7, 7, 120, 48, 1, true), M.ashShaft);
+    shaft.position.set(G.stair.x, -60, G.stair.z); shaft.visible = false; shaft.receiveShadow = true; scene.add(shaft);
 
-    /* the staircase itself: steps on a helix, kept in a window around you */
-    const STEP_A = Math.PI * 2 / 16, RISE = .19, R_WALK = 1.45, N_STEPS = 140;
-    const stepGeo = new THREE.BoxGeometry(1.95, .17, .84); stepGeo.translate(1.35, -.085, 0);
+    /* the staircase itself: wedge-shaped steps on a helix around the column, walked freely, kept in a window around you */
+    const stepShape = new THREE.Shape();
+    { const r0 = .3, r1 = WELL, h = STEP_A * 1.08 / 2;
+      stepShape.moveTo(Math.cos(-h) * r0, Math.sin(-h) * r0); stepShape.lineTo(Math.cos(-h) * r1, Math.sin(-h) * r1);
+      stepShape.absarc(0, 0, r1, -h, h, false); stepShape.lineTo(Math.cos(h) * r0, Math.sin(h) * r0); stepShape.absarc(0, 0, r0, h, -h, true); }
+    const stepGeo = new THREE.ExtrudeGeometry(stepShape, { depth: .17, bevelEnabled: false, curveSegments: 5 });
+    stepGeo.rotateX(-Math.PI / 2); stepGeo.translate(0, -.17, 0); // the tread is at y = 0, the riser hangs below it
     const steps = new THREE.InstancedMesh(stepGeo, M.ashWorld, N_STEPS);
-    steps.visible = false; shadowed(steps); scene.add(steps);
-    const column = new THREE.Mesh(new THREE.CylinderGeometry(.42, .42, 400, 24), M.ashWorld);
+    steps.visible = false; steps.frustumCulled = false; shadowed(steps); scene.add(steps);
+    const columnGeo = new THREE.CylinderGeometry(.42, .42, 400, 24); columnGeo.translate(0, -200 + .9, 0); // a newel stub above the floor, the rest going down
+    const column = new THREE.Mesh(columnGeo, M.ashWorld);
     column.position.set(G.stair.x, 0, G.stair.z); column.visible = false; shadowed(column); scene.add(column);
-    const rail = new THREE.Mesh(new THREE.CylinderGeometry(.02, .02, 1, 6), M.metal); rail.visible = false; scene.add(rail);
-    const stair = { active: false, s: 0, theta0: 0, beat: 0, deepest: 0, shown: false };
-    stair.depth = () => stair.s * RISE / (STEP_A * R_WALK);
-    function placeSteps() {
-      const m = new THREE.Matrix4(), q = new THREE.Quaternion(), p = new THREE.Vector3(), sc = new THREE.Vector3(1, 1, 1), up = new THREE.Vector3(0, 1, 0);
-      const k0 = Math.floor(stair.depth() / RISE) - 30;
+    const stair = { active: false, u: 0, lastA: 0, theta0: Math.PI, beat: 0, deepest: 0, shown: false, k: 0, k0: null, f: .5, lastStep: 0 };
+    stair.depth = () => Math.max(0, Math.round(stair.u / STEP_A)) * RISE;
+    const wrapPi = a => Math.atan2(Math.sin(a), Math.cos(a));
+    function placeSteps(force) {
+      const k0 = Math.round(stair.u / STEP_A) - N_ABOVE;
+      if (!force && k0 === stair.k0) return; // the window moves one tread at a time
+      stair.k0 = k0;
+      const m = new THREE.Matrix4(), q = new THREE.Quaternion(), p = new THREE.Vector3(), sc = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0);
       for (let k = 0; k < N_STEPS; k++) {
-        const kk = k0 + k, a = stair.theta0 + kk * STEP_A, y = -kk * RISE;
+        const kk = k0 + k;
         if (kk < 0) { m.makeScale(0, 0, 0); steps.setMatrixAt(k, m); continue; }
-        q.setFromAxisAngle(up, -a); p.set(G.stair.x, y, G.stair.z);
+        const edge = Math.min(k, N_STEPS - 1 - k), sh = kk === 0 ? 1 : Math.min(1, (edge + 1) / 7); // the ends of the window shrink away instead of popping
+        q.setFromAxisAngle(up, -(stair.theta0 + kk * STEP_A)); p.set(G.stair.x, -kk * RISE, G.stair.z); sc.set(sh, 1, sh);
         m.compose(p, q, sc); steps.setMatrixAt(k, m);
       }
       steps.instanceMatrix.needsUpdate = true;
-      column.position.y = -stair.depth();
+    }
+    // a point on the helix, for the things left on the stairs
+    const onStair = (depth, r = 1.7) => { const k = Math.round(depth / RISE), a = stair.theta0 + k * STEP_A; return [G.stair.x + Math.cos(a) * r, -k * RISE + .01, G.stair.z + Math.sin(a) * r, a]; };
+    function stairTo(depth) { // step onto the helix at a given depth (used when arriving from the Hall, and by the tests)
+      const k = Math.max(0, depth / RISE), a = stair.theta0 + k * STEP_A;
+      stair.active = true; stair.u = k * STEP_A; stair.lastA = wrapPi(a); stair.k = Math.round(k);
+      P.x = G.stair.x + Math.cos(a) * 1.7; P.z = G.stair.z + Math.sin(a) * 1.7; P.vx = P.vz = 0;
+      camY = 1.6 - stair.depth(); placeSteps(true);
     }
 
     /* ---------- things to find ---------- */
@@ -960,18 +1068,19 @@
     pickup('tape1', 7.4, 1.16, 12.2, tapeBuild(M.labelTape1), { label: 'A Hi8 tape. In marker: ASH TREE LANE, 1.', chapter: 'ch1' });
     pickup('tape_measure', 1.1, .94, 8.6, g => { add(g, mesh(new THREE.BoxGeometry(.075, .07, .035), M.yellow), 0, .035, 0); add(g, mesh(new THREE.BoxGeometry(.4, .002, .016), M.paper), .25, .01, 0); add(g, mesh(new THREE.BoxGeometry(.012, .02, .02), M.metal), .45, .01, 0); }, { label: 'A tape measure, left open on the counter.', chapter: 'ch2' });
     pickup('tape2', 7, .02, 2.6, tapeBuild(M.labelTape2), { label: 'A Hi8 tape. In marker: 5½.', chapter: 'ch3' });
-    pickup('photo', 1.3, .56, .5, g => { const p = add(g, mesh(new THREE.PlaneGeometry(.1, .05), M.tagPhoto), 0, .003, 0); p.rotation.x = -Math.PI / 2; p.rotation.z = -.4; p.material.side = THREE.DoubleSide; add(g, mesh(new THREE.BoxGeometry(.11, .002, .13), M.white), 0, .001, 0).rotation.y = -.4; }, { label: 'A photograph, face down. On the back, in pencil: K., 1989.', chapter: 'karen' });
+    pickup('photo', 1.5, .345, .47, g => { const p = add(g, mesh(new THREE.PlaneGeometry(.1, .05), M.tagPhoto), 0, .003, 0); p.rotation.x = -Math.PI / 2; p.rotation.z = -.4; p.material.side = THREE.DoubleSide; add(g, mesh(new THREE.BoxGeometry(.11, .002, .13), M.white), 0, .001, 0).rotation.y = -.4; }, { label: 'A photograph, face down. On the back, in pencil: K., 1989.', chapter: 'karen' });
     pickup('samples', 3.9, .77, 8.75, g => { const bag = add(g, mesh(new THREE.BoxGeometry(.14, .05, .1), new THREE.MeshStandardMaterial({ color: 0xcfd2d6, roughness: .3, transparent: true, opacity: .75 })), 0, .025, 0); bag.rotation.y = .3; add(g, mesh(new THREE.BoxGeometry(.11, .025, .08), M.ash), 0, .02, 0).rotation.y = .3; const tag = add(g, mesh(new THREE.PlaneGeometry(.09, .045), M.tagSample), .06, .004, .07); tag.rotation.x = -Math.PI / 2; tag.rotation.z = .9; tag.material.side = THREE.DoubleSide; }, { label: 'A specimen bag of gray dust, tagged in Reston’s hand.', chapter: 'samples' });
     pickup('front_door', 2.5, 1, 12.92, g => { add(g, mesh(boxUV(new THREE.BoxGeometry(1, 2.05, .06), 1, 2.05, .06, 1), M.wood), 0, 0, 0); for (const y of [.55, -.15, -.75]) add(g, mesh(new THREE.BoxGeometry(.7, .45, .012), M.wood), 0, y, .035); add(g, mesh(new THREE.SphereGeometry(.03, 10, 8), M.brass), .38, -.05, .05); add(g, mesh(new THREE.BoxGeometry(.06, .11, .01), M.brass), .38, -.2, .035); }, { label: 'The front door.', door: 'front', reach: 1.8 });
     block(2.5, 12.95, 1, .2);
 
     // in the hallway, placed once it exists
     let mazePickups = [];
-    let relayLantern = null, relayLight = null, relayGlow = null;
+    let relayLantern = null, relayGlow = null, relayBlocks = [];
+    const relayLight = new THREE.PointLight(0xffa858, 0, 9, 2); scene.add(relayLight);
     function placeMazePickups() {
       for (const p of mazePickups) { scene.remove(p); pickups.splice(pickups.indexOf(p), 1); }
       mazePickups = [];
-      if (G.short) { if (relayLantern) relayLantern.visible = false; if (relayLight) relayLight.intensity = 0; if (relayGlow) relayGlow.visible = false; return; }
+      if (G.short) { if (relayLantern) relayLantern.visible = false; relayLight.intensity = 0; if (relayGlow) relayGlow.visible = false; for (const c of relayBlocks) { const k = colliders.indexOf(c); if (k >= 0) colliders.splice(k, 1); } return; }
       const gx = i => G.x0 + (i + .5) * G.T, gz = j => G.z0 + (j + .5) * G.T;
       // the page about echoes lies in the first room off the corridor
       let firstDoor = null;
@@ -984,18 +1093,18 @@
       const rx = G.stair.x - 4.1, rz = G.stair.z + .8;
       if (!relayLantern) {
         relayLantern = model('lantern', { size: .5, x: rx + .55, z: rz, ry: .8, onLoad: s => { s.traverse(o => { if (o.isMesh && o.material && /glass|lamp|light/i.test(o.material.name || '')) { o.material.emissive = new THREE.Color(0xffa040); o.material.emissiveIntensity = 1.2; } }); } });
-        relayLight = new THREE.PointLight(0xffa858, 3.2, 9, 2); relayLight.position.set(rx + .55, .5, rz); scene.add(relayLight);
+        relayLight.position.set(rx + .55, .5, rz);
         relayGlow = new THREE.Sprite(new THREE.SpriteMaterial({ map: moteTex, color: 0xffb266, transparent: true, opacity: .85, blending: THREE.AdditiveBlending, depthWrite: false, fog: false })); relayGlow.scale.set(1.2, 1.2, 1); relayGlow.position.set(rx + .55, .42, rz); scene.add(relayGlow);
         const seat = new THREE.Mesh(new THREE.BoxGeometry(.4, .04, .4), M.metal); seat.position.set(rx - .5, .42, rz); shadowed(seat); scene.add(seat);
         for (const [dx, dz] of [[-.17, -.17], [.17, -.17], [-.17, .17], [.17, .17]]) { const l = new THREE.Mesh(new THREE.CylinderGeometry(.012, .012, .42, 6), M.metal); l.position.set(rx - .5 + dx, .21, rz + dz); scene.add(l); }
         const thermos = new THREE.Mesh(new THREE.CylinderGeometry(.045, .045, .26, 12), M.metal); thermos.position.set(rx - .1, .13, rz + .35); shadowed(thermos); scene.add(thermos);
       }
       relayLantern.visible = true; relayLight.intensity = found.has('tom') ? 0 : 3.2; relayGlow.visible = !found.has('tom');
-      block(rx + .55, rz, .4, .4); block(rx - .5, rz, .4, .4);
-      put(pickup('tom', rx, .01, rz + .05, g => { add(g, mesh(new THREE.BoxGeometry(.16, .05, .1), M.plastic), 0, .025, 0).rotation.y = -.3; add(g, mesh(new THREE.PlaneGeometry(.1, .04), M.labelTom), 0, .051, 0).rotation.set(-Math.PI / 2, 0, -.3); const p = add(g, mesh(new THREE.PlaneGeometry(.21, .3), M.pageTom), .3, .004, .1); p.rotation.set(-Math.PI / 2, 0, .6); p.material.side = THREE.DoubleSide; }, { label: 'A cassette recorder, labelled TOM, at the lip of the well. Beside it, pages of jokes.', chapter: 'tom' }));
+      if (!relayBlocks.length) { block(rx + .55, rz, .4, .4); block(rx - .5, rz, .4, .4); relayBlocks = colliders.slice(-2); }
+      put(pickup('tom', rx, .01, rz + .05, g => { const r = model('tape_recorder', { size: .42, axis: 'z' }); scene.remove(r); r.position.set(0, 0, 0); r.rotation.y = -.3; g.add(r); add(g, mesh(new THREE.PlaneGeometry(.1, .04), M.labelTom), .02, .318, -.06).rotation.set(-Math.PI / 2, 0, -.3); const p = add(g, mesh(new THREE.PlaneGeometry(.21, .3), M.pageTom), .3, .004, .1); p.rotation.set(-Math.PI / 2, 0, .6); p.material.side = THREE.DoubleSide; }, { label: 'A tape recorder, labelled TOM, at the lip of the well. Beside it, pages of jokes.', chapter: 'tom', reach: 2.5 }));
       put(pickup('cache', gx(96), 0, gz(76.3), g => {
         add(g, mesh(new THREE.BoxGeometry(.5, .35, .4), M.cardboard), 0, .175, 0).rotation.z = .5;
-        for (let k = 0; k < 5; k++) { const b = model('water_bottle', { size: .25, x: 0, y: 0, z: 0 }); scene.remove(b); b.position.set(-.45 + k * .22, k % 2 ? .05 : 0, .35 + hash(k) * .3); b.rotation.set(k % 2 ? Math.PI / 2 : 0, hash(k + 3) * 6, 0); g.add(b); }
+        const b0 = model('water_bottle', { size: .25, onLoad: sc => { for (let k = 1; k < 5; k++) { const c = sc.clone(); const h = new THREE.Group(); h.add(c); h.position.set(-.45 + k * .22, k % 2 ? .05 : 0, .35 + hash(k) * .3); h.rotation.set(k % 2 ? Math.PI / 2 : 0, hash(k + 3) * 6, 0); g.add(h); } } }); scene.remove(b0); b0.position.set(-.45, 0, .35 + hash(0) * .3); b0.rotation.y = hash(3) * 6; g.add(b0);
         add(g, mesh(new THREE.CylinderGeometry(.09, .09, .05, 12), M.paper), .5, .025, -.2);
         for (let k = 0; k < 3; k++) add(g, mesh(new THREE.BoxGeometry(.05, .014, .05), M.dark), .3 + k * .07, .007, -.4 + hash(k + 7) * .1);
       }, { label: 'A cache of supplies, torn open. Water, batteries, nothing eaten.', chapter: 'ch5' }));
@@ -1004,22 +1113,21 @@
     }
     let stairPickups = { markers: null, camera: null };
     function placeStairPickups() {
-      const at = depth => { const k = depth / RISE, a = stair.theta0 + k * STEP_A; return [G.stair.x + Math.cos(-a) * 1.5, -depth + .01, G.stair.z + Math.sin(-a) * 1.5]; };
       if (!stairPickups.markers && !found.has('ch6')) {
-        const [x, y, z] = at(8);
+        const [x, y, z] = onStair(8);
         stairPickups.markers = pickup('markers', x, y, z, g => { for (let k = 0; k < 6; k++) { const s = add(g, mesh(new THREE.PlaneGeometry(.05, .3), M.orange), (hash(k) - .5) * .7, .005, (hash(k + 9) - .5) * .7); s.rotation.x = -Math.PI / 2; s.rotation.z = hash(k + 3) * 3; } }, { label: 'Neon markers. Shredded.', chapter: 'ch6', stairDepth: 8 });
       }
       if (!stairPickups.camera && !found.has('ch7')) {
-        const [x, y, z] = at(30);
-        stairPickups.camera = pickup('holloway_cam', x, y, z, g => { add(g, mesh(new THREE.BoxGeometry(.24, .12, .12), M.plastic), 0, .06, 0).rotation.y = .7; add(g, mesh(new THREE.CylinderGeometry(.035, .04, .07, 12), M.dark), .13, .07, .06).rotation.z = Math.PI / 2; add(g, mesh(new THREE.PlaneGeometry(.075, .028), M.labelHolloway), 0, .121, 0).rotation.set(-Math.PI / 2, 0, .7); }, { label: 'A Hi8 camera. Its battery is dead. The tape inside is not.', chapter: 'ch7', stairDepth: 30 });
+        const [x, y, z, a] = onStair(30);
+        stairPickups.camera = pickup('holloway_cam', x, y, z, g => { add(g, mesh(new THREE.BoxGeometry(.24, .12, .12), M.plastic), 0, .06, 0).rotation.y = .7; add(g, mesh(new THREE.CylinderGeometry(.035, .04, .07, 12), M.dark), .13, .07, .06).rotation.z = Math.PI / 2; add(g, mesh(new THREE.PlaneGeometry(.075, .028), M.labelHolloway), 0, .121, 0).rotation.set(-Math.PI / 2, 0, .7); g.rotation.y = -a; }, { label: 'A Hi8 camera. Its battery is dead. The tape inside is not.', chapter: 'ch7', stairDepth: 30 });
       }
     }
     let tornPickups = false;
     function placeTornPickups() {
       if (tornPickups) return; tornPickups = true;
       const put = p => { if (found.has(p.userData.chapter)) { scene.remove(p); pickups.splice(pickups.indexOf(p), 1); } };
-      put(pickup('radio', 12.6, 0, 8.4, g => { const r = model('boom_box', { size: .34, axis: 'x' }); scene.remove(r); r.position.set(0, 0, 0); r.rotation.y = -.6; g.add(r); add(g, mesh(new THREE.BoxGeometry(.012, .012, .012), M.led), .12, .12, .1); }, { label: 'Tom’s radio. It is still on.', chapter: 'ch8', reach: 2.4 }));
-      put(pickup('karen_tapes', 1.3, .56, .5, g => { for (let k = 0; k < 3; k++) add(g, mesh(new THREE.BoxGeometry(.19, .025, .1), M.tape), 0, .0125 + k * .027, 0).rotation.y = (k - 1) * .15; add(g, mesh(new THREE.PlaneGeometry(.13, .05), M.labelKaren), 0, .082, 0).rotation.set(-Math.PI / 2, 0, .3); }, { label: 'VHS tapes, labelled in Karen’s hand: WHAT SOME HAVE THOUGHT.', chapter: 'ch9' }));
+      put(pickup('radio', 12.6, 0, 8.4, g => { const r = model('radio', { size: .23 }); scene.remove(r); r.position.set(0, 0, 0); r.rotation.y = -.6; g.add(r); add(g, mesh(new THREE.BoxGeometry(.012, .012, .012), M.led), .06, .12, .11); }, { label: 'Tom’s radio. It is still on.', chapter: 'ch8', reach: 2.4 }));
+      put(pickup('karen_tapes', 1.1, .345, .46, g => { for (let k = 0; k < 3; k++) add(g, mesh(new THREE.BoxGeometry(.19, .025, .1), M.tape), 0, .0125 + k * .027, 0).rotation.y = (k - 1) * .15; add(g, mesh(new THREE.PlaneGeometry(.13, .05), M.labelKaren), 0, .082, 0).rotation.set(-Math.PI / 2, 0, .3); }, { label: 'VHS tapes, labelled in Karen’s hand: WHAT SOME HAVE THOUGHT.', chapter: 'ch9' }));
       // the rigging Tom built at the top of the stairs, for the wounded
       put(pickup('rig', G.stair.x + 3.7, 0, G.stair.z, g => {
         for (let k = 0; k < 3; k++) { const a = k * Math.PI * 2 / 3; const leg = add(g, mesh(new THREE.CylinderGeometry(.03, .035, 2.2, 8), M.wood), Math.cos(a) * .5, 1.05, Math.sin(a) * .5); leg.rotation.set(Math.sin(a) * .42, 0, -Math.cos(a) * .42); }
@@ -1081,7 +1189,7 @@
     hud.prompt.addEventListener('click', () => { if (target) interact(target); });
     hud.quality.addEventListener('click', () => {
       Q.low = !Q.low; store.set('low', Q.low); syncQuality();
-      renderer.setPixelRatio(dpr()); resize();
+      prCap = Q.low ? 1 : 1.25; slow = 0; renderer.setPixelRatio(dpr()); resize();
       const s = Q.low ? 1024 : 2048; torch.shadow.mapSize.set(s, s); if (torch.shadow.map) { torch.shadow.map.dispose(); torch.shadow.map = null; }
       bloom.enabled = !Q.low;
     });
@@ -1114,20 +1222,20 @@
     const S = { closet: false, hallway: false, torn: false, fleeing: false, explore5: false, arrived: false };
     function openCloset(silent) {
       if (S.closet) return; S.closet = true;
-      closetPlug.open();
-      if (!silent) { Sound.creak(); setTimeout(() => say('Somewhere in the house, a door that was not there.'), 900); }
+      closetPlug.open(); shadowRef.force = true;
+      if (!silent) { Sound.creak(); Sound.play('door_open', { gain: .5, rate: .8, at: .4 }); setTimeout(() => say('Somewhere in the house, a door that was not there.'), 900); }
     }
     function openHallway(silent) {
       if (S.hallway) return; S.hallway = true;
       hallwayPlug.open();
-      buildMaze(false); placeMazePickups();
-      well.visible = lip.visible = steps.visible = column.visible = true;
-      placeSteps();
+      buildMaze(found.has('ch7')); placeMazePickups();
+      lip.visible = true;
+      placeSteps(true); placeStairPickups(); shadowRef.force = true;
       if (!silent) { Sound.growl(.35); setTimeout(() => say('The living room has a new door. Behind it, the yard should be.'), 1200); }
     }
     function tearHouse(silent) {
       if (S.torn) return; S.torn = true;
-      if (G.built) { buildMaze(true); placeMazePickups(); }
+      if (G.built && !G.short) { buildMaze(true); placeMazePickups(); }
       const rand = rng(41);
       for (const w of houseWalls) {
         if (w.tag === 'plug' || w.tag === 'lintel' || w.tag === 'sill') continue;
@@ -1137,11 +1245,15 @@
       }
       houseCeiling.material = M.ashFloor; houseCeiling.position.y = H + .6; houseCeiling.rotation.z = .04;
       for (const l of lamps) { l.light.intensity = 0; l.bulb.visible = false; }
+      bedsideLight.intensity = 0;
+      const pane = glassPanes.reduce((a, b) => { const pa = new THREE.Vector3(), pb = new THREE.Vector3(); a.getWorldPosition(pa); b.getWorldPosition(pb); return pb.distanceTo(new THREE.Vector3(13.9, 1.55, 11.1)) < pa.distanceTo(new THREE.Vector3(13.9, 1.55, 11.1)) ? b : a; });
+      pane.visible = false; model('glass_broken_window', { size: 1.25, x: 13.86, y: .93, z: 11.1, ry: Math.PI / 2, cast: false, onLoad: sc => sc.traverse(o => { if (o.isMesh) { const m = o.material; m.transparent = true; m.opacity = Math.max(m.opacity, .55); m.roughness = Math.min(m.roughness, .08); m.envMapIntensity = 2.5; m.emissive = new THREE.Color(0x141a22); m.needsUpdate = true; } }) });
       lamps[0].flicker = true; lamps[0].light.intensity = 2; lamps[0].bulb.visible = true;
       screenMat.uniforms.on.value = 1; tvLight.intensity = 1.6;
       const pit = box(3.2, .3, 2.6, M.black, 9.6, -.16, 10.2); solid(pit, 3.2, 2.6);
       const crack = new THREE.Mesh(new THREE.PlaneGeometry(.12, 6), M.black); crack.rotation.x = -Math.PI / 2; crack.rotation.z = .3; crack.position.set(4, .005, 8); scene.add(crack);
       placeTornPickups();
+      shadowRef.force = true;
       if (!silent) setTimeout(() => say('The house has moved.'), 800);
     }
     AFTER_READ = {
@@ -1150,8 +1262,8 @@
       karen: () => say('She did not want to live in a house with a closed room in it. Then the house grew one.', 7000),
       explorations: () => say('The map ends at the stairs. So did the line.', 6000),
       samples: () => say('The dust is older than the house. Older than Virginia. Older, if the lab is right, than the ground it stands on.', 8000),
-      tom: () => { if (relayLight) { relayLight.intensity = 0; } if (relayGlow) relayGlow.visible = false; if (relayLantern) relayLantern.traverse(o => { if (o.isMesh && o.material.emissive) o.material.emissiveIntensity = 0; }); Sound.knock(); setTimeout(() => say('The lantern has gone out. Tom kept it lit for days.', 6000), 700); },
-      ch7: () => { S.fleeing = true; Sound.growl(1); shake = 1.4; setTimeout(() => say('Go back up. Now.', 6000), 1500); },
+      tom: () => { relayLight.intensity = 0; if (relayGlow) relayGlow.visible = false; if (relayLantern) relayLantern.traverse(o => { if (o.isMesh && o.material.emissive) o.material.emissiveIntensity = 0; }); Sound.knock(); setTimeout(() => say('The lantern has gone out. Tom kept it lit for days.', 6000), 700); },
+      ch7: () => { S.fleeing = true; Sound.growl(1); shake = 1.4; torchDip = 1; setTimeout(() => say('Go back up. Now.', 6000), 1500); },
       rescue: () => say('Everyone the rope reached came up. Not everyone the rope reached came home.', 7000),
       ch8: () => say('Karen left with the children. Something of hers is still upstairs, in the bedroom.', 7000),
       ch9: () => { S.explore5 = true; say('The doorway is still there. Navidson went back in alone.', 7000); },
@@ -1169,7 +1281,7 @@
     function findTarget() {
       const fx = -Math.sin(P.yaw), fz = -Math.cos(P.yaw);
       let best = null, bd = 9;
-      const py = stair.active ? 1.6 - stair.depth() : 1.6;
+      const py = camY;
       for (const p of pickups) {
         if (p.userData.stairDepth != null && !stair.active) continue;
         const dx = p.position.x - P.x, dz = p.position.z - P.z, dy = p.position.y - py;
@@ -1216,7 +1328,7 @@
       game.ended = true;
       if (document.pointerLockElement) document.exitPointerLock();
       hud.veil.hidden = true; hud.prompt.hidden = true; hud.meter.textContent = '';
-      Sound.ambience(false); Sound.weather(false);
+      Sound.ambience(false); Sound.weather(false); Sound.groan(false);
       card(`<p class="card-kicker">Vermont</p><p>You burned every page. Someone came into the dark with a light that was not yours, and you came out together.</p><p>What you carried out is in the journal. The letters, the exhibits and the index at the back are for whoever is still reading.</p><div class="card-actions"><button type="button" data-journal>Open the journal</button><button type="button" data-again>Walk the house again</button></div>`);
       $('[data-again]', hud.card)?.addEventListener('click', () => location.reload());
     }
@@ -1226,16 +1338,18 @@
 
     const composer = new EffectComposer(renderer);
     composer.addPass(new RenderPass(scene, camera));
-    const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), .22, .55, 1.05);
+    const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth / 2, innerHeight / 2), .22, .55, 1.05);
     bloom.enabled = !Q.low;
     composer.addPass(bloom);
     const look = new ShaderPass({
-      uniforms: { tDiffuse: { value: null }, time: { value: 0 }, grain: { value: .07 }, vignette: { value: .55 }, aberration: { value: .0035 }, resolution: { value: new THREE.Vector2(1, 1) }, breath: { value: 0 } },
+      uniforms: { tDiffuse: { value: null }, time: { value: 0 }, grain: { value: .07 }, vignette: { value: .55 }, aberration: { value: .0035 }, resolution: { value: new THREE.Vector2(1, 1) }, breath: { value: 0 }, tear: { value: 0 } },
       vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
-      fragmentShader: `uniform sampler2D tDiffuse; uniform float time, grain, vignette, aberration, breath; uniform vec2 resolution; varying vec2 vUv;
+      fragmentShader: `uniform sampler2D tDiffuse; uniform float time, grain, vignette, aberration, breath, tear; uniform vec2 resolution; varying vec2 vUv;
         float hash(vec2 p){ vec3 p3 = fract(vec3(p.xyx) * 0.1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }
         void main(){
-          vec2 uv = vUv; vec2 c = uv - 0.5; float r2 = dot(c, c);
+          vec2 uv = vUv;
+          if (tear > 0.0) { float ty = fract(time * 0.19); float band = 1.0 - smoothstep(0.0, 0.035, abs(uv.y - ty)); uv.x += band * tear * 0.03 * sin(time * 37.0 + uv.y * 90.0); uv.y += band * tear * 0.004; }
+          vec2 c = uv - 0.5; float r2 = dot(c, c);
           vec2 ab = c * (aberration + breath * 0.004) * (1.0 + r2 * 6.0);
           vec3 col; col.r = texture2D(tDiffuse, uv + ab).r; col.g = texture2D(tDiffuse, uv).g; col.b = texture2D(tDiffuse, uv - ab).b;
           float lum = dot(col, vec3(0.2126, 0.7152, 0.0722));
@@ -1250,9 +1364,9 @@
 
     /* ---------- frame ---------- */
 
-    let last = performance.now(), t = 0, shake = 0, fogTarget = .05, sayBeat = 0, fps = 60, recStart = 0, idle = 0;
+    let last = performance.now(), t = 0, shake = 0, torchDip = 0, fogTarget = .05, sayBeat = 0, fps = 60, recStart = 0, idle = 0, slow = 0, settled = 0;
     function resize() {
-      const w = innerWidth, h = innerHeight; renderer.setSize(w, h, false); composer.setSize(w, h);
+      const w = innerWidth, h = innerHeight; renderer.setSize(w, h, false); composer.setSize(w, h); bloom.setSize(w / 2, h / 2);
       camera.aspect = w / h; camera.updateProjectionMatrix();
       look.uniforms.resolution.value.set(w * dpr(), h * dpr());
     }
@@ -1273,74 +1387,110 @@
       idle = 0;
       if (!recStart) recStart = now;
       hud.rec.textContent = tc((now - recStart) / 1000);
+      // if the frames come slowly for a few seconds, draw fewer pixels; then fewer effects
+      settled += dt;
+      if (settled > 6) {
+        if (fps < 40) slow += dt; else slow = Math.max(0, slow - dt * .5);
+        if (slow > 2) {
+          slow = 0;
+          if (bloom.enabled) bloom.enabled = false;
+          else if (prCap > 1) { prCap = 1; renderer.setPixelRatio(dpr()); resize(); }
+          else if (!Q.low) { Q.low = true; syncQuality(); torch.shadow.mapSize.set(1024, 1024); if (torch.shadow.map) { torch.shadow.map.dispose(); torch.shadow.map = null; } }
+          else if (prCap > .8) { prCap = .8; renderer.setPixelRatio(dpr()); resize(); }
+        }
+      }
 
       // input
       let mx = 0, mz = 0;
       if (keys.has('f')) mz -= 1; if (keys.has('b')) mz += 1; if (keys.has('l')) mx -= 1; if (keys.has('r')) mx += 1;
       mx += stick.dx; mz += stick.dz;
       const mag = Math.hypot(mx, mz); if (mag > 1) { mx /= mag; mz /= mag; }
-      const speed = (keys.has('run') ? 3.4 : 2.1) * (stair.active ? 1.3 : 1);
+      let speed = keys.has('run') ? 3.4 : 2.1;
+      if (stair.active) speed *= .85 * clamp(Math.hypot(P.x - G.stair.x, P.z - G.stair.z) / 1.7, .45, 1); // the turn is tighter near the column
 
+      const fx = -Math.sin(P.yaw), fz = -Math.cos(P.yaw), rx = Math.cos(P.yaw), rz = -Math.sin(P.yaw);
+      const tx = (fx * -mz + rx * mx) * speed, tz = (fz * -mz + rz * mx) * speed;
+      const k = 1 - Math.exp(-dt * 12);
+      P.vx += (tx - P.vx) * k; P.vz += (tz - P.vz) * k;
+      P.x += P.vx * dt; P.z += P.vz * dt;
       if (stair.active) {
-        // on the rail: forward goes down, back goes up
-        const dir = -mz;
-        stair.s = Math.max(0, stair.s + dir * speed * dt);
-        const depth = stair.depth();
-        const th = stair.theta0 + (depth / RISE) * STEP_A;
-        const prevYaw = stair.lastTh ?? th;
-        P.yaw -= (th - prevYaw); stair.lastTh = th;
-        P.x = G.stair.x + Math.cos(-th) * R_WALK; P.z = G.stair.z + Math.sin(-th) * R_WALK;
-        if (dir !== 0) P.walked += speed * dt;
-        stair.deepest = Math.max(stair.deepest, depth);
-        while (stair.beat < STAIR_BEATS.length && depth >= STAIR_BEATS[stair.beat][0]) { const [, text, fx] = STAIR_BEATS[stair.beat++]; say(text); if (fx === 'growl') { Sound.growl(); shake = 1; } }
-        if (depth > 20 && Math.random() < dt / 40) { Sound.growl(.6); shake = .6; }
-        hud.meter.textContent = `Down: ${fmt(depth * FT)} ft. Steps: ${fmt(depth / RISE)}.`;
-        if (stair.s === 0 && dir < 0) { // back out into the Hall
-          stair.active = false; stair.lastTh = null;
-          P.x = G.stair.x + Math.cos(-stair.theta0) * 3.9; P.z = G.stair.z + Math.sin(-stair.theta0) * 3.9;
-          if (S.fleeing && !S.torn) { tearHouse(); say('The corridor is shorter than it was.'); }
+        // on the helix: the column on one side, nothing on the other, the tread under your feet
+        const cx = G.stair.x, cz = G.stair.z;
+        let dx = P.x - cx, dz = P.z - cz, r = Math.hypot(dx, dz) || 1e-6;
+        if (r < R_IN) { P.x = cx + dx / r * R_IN; P.z = cz + dz / r * R_IN; dx = P.x - cx; dz = P.z - cz; r = R_IN; }
+        const a = Math.atan2(dz, dx);
+        stair.u += wrapPi(a - stair.lastA); stair.lastA = a;
+        if (stair.u < -HALF_STEP) { // the back edge of the top tread: nothing beyond it but the well
+          stair.u = -HALF_STEP; const ta = stair.theta0 - HALF_STEP; stair.lastA = wrapPi(ta);
+          P.x = cx + Math.cos(ta) * r; P.z = cz + Math.sin(ta) * r; dx = P.x - cx; dz = P.z - cz;
         }
+        const sk = Math.round(stair.u / STEP_A);
+        const outward = (P.vx * dx + P.vz * dz) / (r * (Math.hypot(P.vx, P.vz) || 1e-6));
+        if (sk === 0 && r > R_OUT && outward > .5) { // walking out over the edge of the top tread, back onto the floor of the Hall
+          stair.active = false; const kk = (WELL + P.r + .05) / r; P.x = cx + dx * kk; P.z = cz + dz * kk;
+          if (S.fleeing && !S.torn) { setTimeout(() => tearHouse(), 60); setTimeout(() => say('The corridor is shorter than it was.', 6000), 6200); }
+        } else if (r > R_OUT) { P.x = cx + dx / r * R_OUT; P.z = cz + dz / r * R_OUT; }
+        // the gait: feet on tread sk, the drop to the next one taken as a step, with a footfall at the edge
+        const f = stair.u / STEP_A - sk + .5;
+        stair.f = f;
+        if (sk !== stair.k) stair.k = sk;
+        const edge = f > .65 || f < .35;
+        if (edge !== stair.onEdge && t - stair.lastStep > .12 && P.walked !== stair.lastWalked) { stair.onEdge = edge; if (edge) { stair.lastStep = t; Sound.step(true, true); } }
+        stair.lastWalked = P.walked;
+        const depth = stair.depth();
+        P.walked += Math.hypot(P.vx, P.vz) * dt;
+        stair.deepest = Math.max(stair.deepest, depth);
+        while (stair.beat < STAIR_BEATS.length && depth >= STAIR_BEATS[stair.beat][0]) { const [, text, fx] = STAIR_BEATS[stair.beat++]; say(text); if (fx === 'growl') { Sound.growl(); shake = 1; torchDip = 1; } }
+        if (depth > 20 && Math.random() < dt / 40) { Sound.growl(.6); shake = .6; torchDip = .7; }
+        hud.meter.textContent = `Down: ${fmt(depth * FT)} ft. Steps: ${fmt(depth / RISE)}.`;
         placeSteps();
       } else {
-        const fx = -Math.sin(P.yaw), fz = -Math.cos(P.yaw), rx = Math.cos(P.yaw), rz = -Math.sin(P.yaw);
-        const tx = (fx * -mz + rx * mx) * speed, tz = (fz * -mz + rz * mx) * speed;
-        const k = 1 - Math.exp(-dt * 12);
-        P.vx += (tx - P.vx) * k; P.vz += (tz - P.vz) * k;
-        P.x += P.vx * dt; P.z += P.vz * dt;
         collide();
         const moved = Math.hypot(P.vx, P.vz) * dt;
         P.walked += moved;
-        // the Great Hall: step over the edge and you are on the stairs
-        if (G.built && P.x > G.x0 + G.hallStart * G.T && Math.hypot(P.x - G.stair.x, P.z - G.stair.z) < 2.6) {
-          stair.active = true; stair.s = 0; stair.beat = 0; stair.lastTh = null;
-          stair.theta0 = -Math.atan2(P.z - G.stair.z, P.x - G.stair.x);
-          P.yaw = -stair.theta0 - Math.PI / 2 + Math.PI; // look along the descent
-          placeStairPickups(); placeSteps();
-          if (!stair.shown) { stair.shown = true; say('A staircase. Going down.'); }
+        // the Great Hall: the well is a hole, and the only way into it is the top tread
+        if (G.built && P.x > G.x0 + G.hallStart * G.T) {
+          const cx = G.stair.x, cz = G.stair.z, dx = P.x - cx, dz = P.z - cz, r = Math.hypot(dx, dz) || 1e-6;
+          if (r < WELL + P.r) {
+            const a = Math.atan2(dz, dx), rel = wrapPi(a - stair.theta0);
+            if (Math.abs(rel) < HALF_STEP + P.r / r) {
+              if (r < WELL - .1) {
+                stair.active = true; stair.u = rel; stair.lastA = a; stair.k = 0; stair.onEdge = false;
+                const rr = Math.min(r, R_OUT - .05); P.x = cx + Math.cos(a) * rr; P.z = cz + Math.sin(a) * rr; // onto the tread
+                placeStairPickups(); placeSteps(true);
+                if (!stair.shown) { stair.shown = true; say('A staircase. Going down.'); }
+              }
+            } else { const kk = (WELL + P.r) / r; P.x = cx + dx * kk; P.z = cz + dz * kk; }
+          }
         }
         // the door back, once you have seen the bottom of what you can see
         if (S.explore5 && P.x > G.x0 + .5 && P.x < G.x0 + 3 && P.z > 7.4 && P.z < 9.8) startExploration5();
       }
+      if (stair.active) { // the eye follows the gait: level on the tread, then down over the edge
+        const f = stair.f, target = reduced ? 1.6 - stair.u / STEP_A * RISE : 1.6 - (stair.k + THREE.MathUtils.smoothstep(f, .55, 1)) * RISE - .02 * Math.sin(Math.PI * f);
+        camY += (target - camY) * (1 - Math.exp(-dt * (reduced ? 6 : 22)));
+      } else camY += (1.6 - camY) * (1 - Math.exp(-dt * 14));
 
       // footsteps
       const reg = region();
       if (reg !== P.region) { Sound.room(reg === 'house' ? .06 : reg === 'maze' ? .38 : reg === 'hall' ? .55 : .45); P.region = reg; }
-      if (P.walked - P.stepAcc > .62) { P.stepAcc = P.walked; Sound.step(reg !== 'house', reg === 'maze' || reg === 'hall'); }
+      if (!stair.active && P.walked - P.stepAcc > .62) { P.stepAcc = P.walked; Sound.step(reg !== 'house', reg === 'maze' || reg === 'hall'); }
 
       // hallway beats by line paid out
       if (reg === 'maze' || reg === 'hall') {
         P.lineOut = Math.max(P.lineOut, P.x - G.x0);
         const out = (P.x - G.x0) * FT;
         hud.meter.textContent = reg === 'hall' ? 'The Great Hall.' : `Line paid out: ${fmt(out)} ft`;
-        while (sayBeat < HALL_BEATS.length && !G.short && (P.x - G.x0) >= HALL_BEATS[sayBeat][0]) { const [, text, fx] = HALL_BEATS[sayBeat++]; say(text); if (fx === 'growl') { Sound.growl(); shake = 1; } }
-        if (S.torn && (P.x - G.x0) > 2 && Math.random() < dt / 30) { Sound.growl(.5); shake = .5; }
+        while (sayBeat < HALL_BEATS.length && !G.short && (P.x - G.x0) >= HALL_BEATS[sayBeat][0]) { const [, text, fx] = HALL_BEATS[sayBeat++]; say(text); if (fx === 'growl') { Sound.growl(); shake = 1; torchDip = 1; } }
+        if (S.torn && (P.x - G.x0) > 2 && Math.random() < dt / 30) { Sound.growl(.5); shake = .5; torchDip = .6; }
       } else if (reg === 'house') {
         hud.meter.textContent = S.torn ? 'The house is not the size it was.' : '';
-        if (S.torn && Math.random() < dt / 25) { Sound.growl(.4); shake = .4; }
+        if (S.torn && Math.random() < dt / 25) { Sound.growl(.4); shake = .4; torchDip = .5; }
         if (!S.torn && Math.random() < dt / 90) Sound.knock();
       }
       Sound.ambience(reg !== 'house' || S.torn, reg === 'house' ? .08 : reg === 'stair' ? .22 : .16);
       Sound.weather(reg === 'house' && !S.torn);
+      Sound.groan(reg === 'house' && S.torn);
       fogTarget = reg === 'house' ? (S.torn ? .1 : .045) : reg === 'maze' ? .085 : reg === 'hall' ? .05 : .075;
       findTarget();
       render(dt);
@@ -1363,38 +1513,76 @@
       if (G.built && P.x > G.x0 - 1) for (let d = .25; d < best; d += .25) { if (tileAt(Math.floor((P.x + fx * d - G.x0) / G.T), Math.floor((P.z + fz * d - G.z0) / G.T)) === 1) { best = d; break; } }
       return best;
     }
+    // your breath, in the cold of the hallway
+    const breaths = Array.from({ length: 3 }, () => { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: moteTex, color: 0xdfe4ee, transparent: true, opacity: 0, depthWrite: false })); sp.visible = false; scene.add(sp); return { sp, age: 9, vel: new THREE.Vector3() }; });
+    let breathTimer = 3;
+    const breathPos = new THREE.Vector3(), breathDir = new THREE.Vector3();
+    function breathe(dt) {
+      const cold = P.region !== 'house' || S.torn;
+      breathTimer -= dt;
+      if (cold && breathTimer <= 0 && !reduced) {
+        breathTimer = 3.2 + Math.random() * 2.2;
+        const b = breaths.find(b => b.age > 2.4); if (b) {
+          camera.getWorldDirection(breathDir);
+          breathPos.copy(camera.position).addScaledVector(breathDir, .45); breathPos.y -= .14;
+          b.sp.position.copy(breathPos); b.sp.visible = true; b.age = 0;
+          b.vel.copy(breathDir).multiplyScalar(.35); b.vel.y += .12; b.vel.x += (Math.random() - .5) * .1; b.vel.z += (Math.random() - .5) * .1;
+        }
+      }
+      for (const b of breaths) {
+        if (!b.sp.visible) continue;
+        b.age += dt; b.sp.position.addScaledVector(b.vel, dt); b.vel.multiplyScalar(1 - dt * .8);
+        const k = b.age / 2.4, sc = .12 + k * .5;
+        b.sp.scale.set(sc, sc * .8, 1); b.sp.material.opacity = .28 * Math.sin(Math.min(1, k) * Math.PI);
+        if (b.age > 2.4) b.sp.visible = false;
+      }
+    }
     let iris = 1;
     let bobPhase = 0;
+    const shadowRef = { x: NaN, z: NaN, yaw: 0, pitch: 0, y: 0, frame: 0 };
     function render(dt) {
       scene.fog.density += (fogTarget - scene.fog.density) * (1 - Math.exp(-dt * 2));
       const reg = P.region;
       scene.fog.color.setHex(reg === 'house' && !S.torn ? 0x0a0808 : 0x050506);
       skyDome.visible = reg === 'house';
-      const moving = Math.hypot(P.vx, P.vz) > .3 || (stair.active && (keys.size || stick.dz));
+      const moving = Math.hypot(P.vx, P.vz) > .3;
       bobPhase += dt * (moving ? 9 : 0);
       const bob = reduced ? 0 : Math.sin(bobPhase) * .028 * (moving ? 1 : 0);
-      const y = (stair.active ? 1.6 - stair.depth() : 1.6) + bob;
+      const y = camY + bob;
       camera.position.set(P.x, y, P.z);
-      camera.rotation.y = P.yaw; camera.rotation.x = P.pitch; camera.rotation.z = reduced ? 0 : Math.sin(bobPhase * .5) * .004 * (moving ? 1 : 0);
-      if (shake > 0) { camera.position.x += (Math.random() - .5) * .02 * shake; camera.position.y += (Math.random() - .5) * .02 * shake; shake = Math.max(0, shake - dt * .6); }
+      const sway = reduced ? 0 : .0035 * (S.torn ? 2 : 1);
+      camera.rotation.y = P.yaw + (Math.sin(t * .61) * .6 + Math.sin(t * 1.73) * .4) * sway;
+      camera.rotation.x = P.pitch + (Math.sin(t * .83 + 1) * .6 + Math.sin(t * 2.1) * .4) * sway;
+      camera.rotation.z = (reduced ? 0 : Math.sin(bobPhase * .5) * .004 * (moving ? 1 : 0)) + Math.sin(t * .47) * sway * .5;
+      if (shake > 0 && !reduced) { camera.position.x += (Math.random() - .5) * .02 * shake; camera.position.y += (Math.random() - .5) * .02 * shake; shake = Math.max(0, shake - dt * .6); }
       const bright = reg === 'house' && !S.torn ? .8 : 1;
       const irisTarget = clamp(viewDistance() / 4.5, .3, 1);
       iris += (irisTarget - iris) * (1 - Math.exp(-dt * 3));
-      torch.intensity = 34 * bright * iris * (reduced ? 1 : 1 + Math.sin(t * 13) * .015 + (Math.random() - .5) * .03);
+      torchDip = Math.max(0, torchDip - dt * 1.4);
+      const dipK = 1 - torchDip * (reduced ? .3 : .55 + Math.random() * .25);
+      torch.intensity = 34 * bright * iris * dipK * (reduced ? 1 : 1 + Math.sin(t * 13) * .015 + (Math.random() - .5) * .03);
       halo.intensity = reg === 'house' ? .7 : 2.2;
       for (const l of lamps) if (l.flicker && l.light.intensity > 0) { const f = Math.random() < .04 ? .2 : 1; l.light.intensity = l.base * f * (S.torn ? .4 : 1); l.bulb.visible = f > .5; }
       for (const led of leds) led.visible = Math.floor(t * 2) % 2 === 0;
       for (const p of pickups) { const m = p.children[0]; if (m && m.isMesh && !p.userData.door) { const near = Math.hypot(p.position.x - P.x, p.position.z - P.z) < 3.5; if (m.material.emissive) m.material.emissiveIntensity = near && p === target ? 3 : 1; } }
-      motesTime.value = t; screenMat.uniforms.time.value = t;
+      motesTime.value = t; screenMat.uniforms.time.value = t; breathe(dt);
       look.uniforms.time.value = t; look.uniforms.grain.value = reduced ? .015 : (reg === 'house' ? .045 : .06); look.uniforms.breath.value = reduced ? 0 : shake;
+      look.uniforms.tear.value = reduced || !S.torn ? 0 : (reg === 'house' ? .8 : .35) * (.5 + .5 * Math.sin(t * .37));
       if (tvLight.intensity > 0) tvLight.intensity = 1.2 + Math.random() * .8;
       if (relayGlow && relayGlow.visible) { const k = 1.15 + Math.sin(t * 2.1) * .1 + Math.sin(t * 7.3) * .06; relayGlow.scale.set(k, k, 1); relayLight.intensity = 2.4 + k; }
+      shadowRef.frame++;
+      const camMoved = Math.abs(P.x - shadowRef.x) > .015 || Math.abs(P.z - shadowRef.z) > .015 || Math.abs(P.yaw - shadowRef.yaw) > .003 || Math.abs(P.pitch - shadowRef.pitch) > .003 || Math.abs(camY - shadowRef.y) > .01;
+      if ((camMoved && (shadowRef.frame & 1) === 0) || shadowRef.frame < 4 || shadowRef.force) { renderer.shadowMap.needsUpdate = true; shadowRef.force = false; shadowRef.x = P.x; shadowRef.z = P.z; shadowRef.yaw = P.yaw; shadowRef.pitch = P.pitch; shadowRef.y = camY; }
+      steps.visible = column.visible = shaft.visible = G.built && (reg === 'hall' || reg === 'stair');
+      if (hallDust) hallDust.visible = reg === 'hall' || reg === 'maze';
+      houseDust.visible = reg === 'house';
       composer.render(dt);
     }
     requestAnimationFrame(frame);
 
     // arrival
     function arrive() {
+      setTimeout(() => Sound.play('door_close', { gain: .8, rate: .9 }), 1400);
       setTimeout(() => {
         card(`<p class="card-kicker">Ash Tree Lane</p><p>The house is empty. Whatever they left is still inside.</p><p class="card-help">${touch ? 'Drag on the left to walk, on the right to look. Tap what you find.' : 'Click to look around. Walk with the arrow keys, WASD or ZQSD. Press E for what you find, J for the journal.'}</p>`, 9000);
       }, 400);
@@ -1402,7 +1590,7 @@
     }
 
     // for tests and the curious
-    window.ATL = { P, S, G, stair, models, fps: () => Math.round(fps), loaded: () => loadDone, teleport(x, z, yaw = P.yaw) { P.x = x; P.z = z; P.yaw = yaw; P.vx = P.vz = 0; }, look(yaw, pitch = 0) { P.yaw = yaw; P.pitch = pitch; }, target: () => target?.userData.id, interact: () => target && interact(target), found, unlock, keys, renderer, scene };
+    window.ATL = { P, S, G, stair, stairTo, colliders, yawTo: (dx, dz) => Math.atan2(-dx, -dz), models, fps: () => Math.round(fps), loaded: () => loadDone, teleport(x, z, yaw = P.yaw) { P.x = x; P.z = z; P.yaw = yaw; P.vx = P.vz = 0; }, look(yaw, pitch = 0) { P.yaw = yaw; P.pitch = pitch; }, target: () => target?.userData.id, interact: () => target && interact(target), found, unlock, keys, renderer, scene };
   }
 
   /* ================================================================
