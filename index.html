@@ -8,7 +8,7 @@
 <meta property="og:title" content="Ash Tree Lane">
 <meta property="og:description" content="An unofficial retelling of Mark Z. Danielewski's House of Leaves, in new words, for the web.">
 <meta property="og:type" content="website">
-<meta property="og:image" content="https://pazificateur69.github.io/ash-tree-lane/og.png">
+<meta property="og:image" content="https://pazificateur69.github.io/ash-tree-lane/og.jpg">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" content="#f6f6f3">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23f6f6f3'/%3E%3Crect x='10' y='6' width='12' height='22' fill='%2317171a'/%3E%3Crect x='10' y='6' width='12' height='2' fill='%232447d6'/%3E%3C/svg%3E">
@@ -16,6 +16,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Sorts+Mill+Goudy:ital@0;1&family=Tinos:ital,wght@0,400;0,700;1,400&display=swap">
 <link rel="stylesheet" href="style.css">
+<script type="importmap">{"imports":{"three":"./vendor/three/three.module.min.js","three/addons/":"./vendor/three/addons/"}}</script>
 <script>document.documentElement.classList.add('js')</script>
 <script src="game.js" defer></script>
 </head>
@@ -50,10 +51,17 @@
     <p class="hud-meter" data-meter aria-hidden="true"></p>
     <p class="hud-sub" data-sub aria-live="polite"></p>
     <button class="hud-prompt" type="button" data-prompt hidden></button>
+    <p class="hud-rec" aria-hidden="true"><span class="rec-dot"></span>REC <span data-rec>00:00:00</span></p>
     <div class="hud-corner">
+      <button class="hud-btn" type="button" data-quality>Detail: high</button>
       <button class="hud-btn" type="button" data-sound>Sound on</button>
       <button class="hud-btn" type="button" data-journal>Journal</button>
     </div>
+  </div>
+  <div class="loading" data-loading role="status">
+    <p class="loading-word">house</p>
+    <div class="loading-bar" aria-hidden="true"><i data-load-bar></i></div>
+    <p class="loading-text" data-load-text>The house is loading</p>
   </div>
   <div class="veil" data-veil hidden><p>Click to go on</p></div>
   <div class="card" data-card hidden></div>
@@ -160,16 +168,60 @@
   <p>The cameras keep running. The house keeps being wrong.</p>
 </section>
 
-<section class="chapter" id="ch4" data-title="IV. Echoes">
-  <h2 class="ch-head"><span class="ch-num">IV</span><span class="ch-title">Echoes</span></h2>
+<section class="chapter" id="karen" data-title="IV. Karen">
+  <h2 class="ch-head"><span class="ch-num">IV</span><span class="ch-title">Karen</span></h2>
+  <p>Before the film is about a house, it is about a woman who does not like closed doors.</p>
+  <p>Karen Green was a model for most of her twenties, the kind whose face people know without knowing her name. She left it without regret. What she kept from those years was a habit of being looked at, and a way of holding still under a lens that Navidson, who had spent his life behind one, found harder to read than any war. She would not marry him. She said it was not the right time, and then she went on saying it, year after year, while they raised two children together.<sup><a class="ref" href="#n8">8</a></sup></p>
+  <aside class="note" id="n8" data-voice="zampano" data-num="8">
+    <p>On the refusal to marry as a form of measurement, see Ilse Arbogast, <cite>Rooms Without Doors: Domestic Space and the Unpromised</cite> (Chicago: Vane &amp; Pierrepont, 1994), pp. 40-58, where the author argues, with more confidence than evidence, that every long engagement is a floor plan with one wall missing.<sup><a class="ref" href="#n9">9</a></sup></p>
+    <aside class="note" id="n9" data-voice="editors" data-num="9">
+      <p>No copy of this book has been located. Vane &amp; Pierrepont, if it existed, published nothing else.</p>
+    </aside>
+  </aside>
+  <p>She is claustrophobic, and afraid of the dark, and the film treats both facts with unusual care. There is a story her sister tells, in an interview Zampanò quotes at length, about a well and an afternoon when Karen was fourteen and their stepfather put the two girls down into it, and brought the sister up, and left Karen there. Karen has never confirmed it. She has never denied it either. She only says that she does not remember, in the voice of someone who remembers.<sup><a class="ref" href="#n10">10</a></sup></p>
+  <aside class="note" id="n10" data-voice="editors" data-num="10">
+    <p>The Record gives the sister’s account and nothing more. This retelling follows it: the story is told here as a story, and is not made into a fact.</p>
+  </aside>
+  <p>What she does about the house is what she has always done about a room she cannot leave: she fills it. When the hallway appears she buys books, hundreds of them, and builds shelves across the living room wall to cover the doorway, so that the family will have a library where the dark used to be. It works for a while. Then the shelves begin to pull away from the wall, and the gap behind them widens by the day, and one morning the books are on the floor and the doorway is exactly where it was.</p>
+  <p>Some of the most honest minutes in the film are hers, shot when she is alone with a camera and nobody is asking her to hold still. Zampanò reads them closely. What he finds in them is not a woman afraid of a hallway. It is a woman afraid of what Will becomes when he is looking at one: a man measuring the distance between himself and the people in the next room.<sup><a class="ref" href="#n11">11</a></sup></p>
+  <aside class="note" id="n11" data-voice="johnny" data-num="11">
+    <p>Thumper came in for the touch-up today. I did it. My hand was fine. I said about four words to her, all of them about the ink, and when she left the shop got smaller.</p>
+    <p>I keep thinking about a woman building bookshelves across a door. I understand that better than I understand anything else in his papers. You can’t close it, so you put something in front of it that you love. Then you wait and see what leans.</p>
+  </aside>
+  <p>There is talk, in Zampanò’s pages, of other men while Navidson was away on assignment, and Zampanò treats the talk as more than talk. This retelling lets it stay talk. What the film shows is a woman who keeps every promise she is asked for, and a man who keeps asking for one more.</p>
+</section>
+
+<section class="chapter" id="explorations" data-title="V. Explorations A to 3">
+  <h2 class="ch-head"><span class="ch-num">V</span><span class="ch-title">Explorations A to 3</span></h2>
+  <p>The film numbers the trips into the hallway, and the numbering is the first sign that the house is winning.</p>
+  <p>Exploration A is Navidson’s own, and it has a letter instead of a number because nobody yet thought of it as the first of anything. He goes in with a camera and a flashlight while Tom and Reston wait at the door with a radio. The hallway does not stay still for him: it branches, it lengthens, a wall arrives where there was none, and for a while the doorway behind him is simply gone. Then it is there again, a small warm rectangle a long way off. He comes out talking too fast, and Tom, who will not set foot in the place, pours him a drink he does not take.</p>
+  <p>Explorations 1, 2 and 3 are Holloway’s, and they are made the way a professional makes them: provisioned, radioed, timed. At the door, Navidson keeps a log of what the radio describes, and Reston reads the logs against each other, and they do not agree. A room that was forty feet across on the first trip is a hundred on the second and is not there on the third.<sup><a class="ref" href="#n12">12</a></sup> The corridor is always longer coming back.</p>
+  <aside class="note" id="n12" data-voice="editors" data-num="12">
+    <p>Reston’s maps, or drawings that claim to be his, circulated for some years among people who collect such things. The ones we have seen contradict one another in the same way the Record says they did, which proves either that they are genuine or that the forger had read the film closely.</p>
+  </aside>
+  <p>It is on these trips that they find the Great Hall, and the staircase in it. The Hall is where the corridor stops pretending to be a corridor: the walls go away to either side, the ceiling goes up out of the light, and the floor goes on. Their lamps, which are strong enough to light a quarry, light a circle a few yards across and then stop. Someone drops a flare into the well of the stairs and watches it fall, and it falls for longer than a flare should, and when it lands it is a spark, and then it is nothing.</p>
+  <p>The staircase is a spiral, going down.<sup><a class="ref" href="#n13">13</a></sup></p>
+  <aside class="note" id="n13" data-voice="zampano" data-num="13">
+    <p>A spiral is the only shape a staircase can take when it has no wall to hold it. Zampanò notes that the spiral is also the shape of the ear, and of the argument he is making, and of the way one returns to a fear: never to the same place, always to a place directly beneath it.<sup><a class="ref" href="#n14">14</a></sup></p>
+    <aside class="note" id="n14" data-voice="johnny" data-num="14">
+      <p>He wrote that one on the back of a takeout menu. Szechuan. I know the place. It closed years ago, and the number on the menu rings a fax machine now. I called it anyway, twice, and listened to the tone.</p>
+    </aside>
+  </aside>
+  <p>On the third trip they go down. Not far, by the standard the fourth will set, but far enough to learn that the steps do not end where the light does, and that the radio thins to nothing long before the stairs do. They come back up. At the door Holloway says very little, and Navidson, watching him, understands that the man has already decided to go back for longer.</p>
+  <p class="band-lines" aria-hidden="true"><span>A. Navidson.</span><span>1. hours.</span><span>2. the Hall.</span><span>3. the stairs.</span></p>
+  <p>The map that survives from these trips, if it is a map, is a sheet of paper that begins with a careful drawing of the house and ends with a circle and a spiral and a line that runs off the edge. Someone has written across the bottom that they stopped there. Someone else, in a different pencil, has written that the stairs have no bottom, and underlined it twice.</p>
+</section>
+
+<section class="chapter" id="ch4" data-title="VI. Echoes">
+  <h2 class="ch-head"><span class="ch-num">VI</span><span class="ch-title">Echoes</span></h2>
   <p>Zampanò interrupts the story here for a long meditation on echoes, and it is not the digression it appears to be.</p>
   <div class="echoes">
     <p>An echo is the sound of a space answering. Clap your hands in a cathedral and the cathedral tells you how large it is. Clap in a closet and the closet says almost nothing. In the hallway, the explorers call out, and the dark does not answer, or answers late, or answers with something that is not quite their voice.</p>
     <p class="echo" aria-hidden="true"><span>not quite their voice</span><span>their voice</span><span>voice</span></p>
-    <p>He reminds us of the nymph Echo, punished by Hera so that she could only repeat the last words spoken to her.<sup><a class="ref" href="#n8">8</a></sup> She fell in love with Narcissus, who loved only his own reflection, and she wasted away until nothing was left of her but the voice.</p>
-    <aside class="note" id="n8" data-voice="zampano" data-num="8">
-      <p>The fullest ancient telling is Ovid’s, in the third book of the <cite>Metamorphoses</cite>. Echo is punished for talking. Her punishment is to be allowed only the ends of other people’s sentences.<sup><a class="ref" href="#n9">9</a></sup></p>
-      <aside class="note" id="n9" data-voice="editors" data-num="9">
+    <p>He reminds us of the nymph Echo, punished by Hera so that she could only repeat the last words spoken to her.<sup><a class="ref" href="#n15">15</a></sup> She fell in love with Narcissus, who loved only his own reflection, and she wasted away until nothing was left of her but the voice.</p>
+    <aside class="note" id="n15" data-voice="zampano" data-num="15">
+      <p>The fullest ancient telling is Ovid’s, in the third book of the <cite>Metamorphoses</cite>. Echo is punished for talking. Her punishment is to be allowed only the ends of other people’s sentences.<sup><a class="ref" href="#n16">16</a></sup></p>
+      <aside class="note" id="n16" data-voice="editors" data-num="16">
         <p>Zampanò’s chapter on echoes is many times longer than the version given here, and ranges across acoustics, architecture and myth. It has been condensed.</p>
       </aside>
     </aside>
@@ -180,13 +232,13 @@
   </div>
 </section>
 
-<section class="chapter" id="ch5" data-title="V. Holloway">
-  <h2 class="ch-head"><span class="ch-num">V</span><span class="ch-title">Holloway</span></h2>
+<section class="chapter" id="ch5" data-title="VII. Holloway">
+  <h2 class="ch-head"><span class="ch-num">VII</span><span class="ch-title">Holloway</span></h2>
   <p>Navidson keeps his promise the way people keep promises they resent. He does not go into the hallway himself. He hires someone to go instead.</p>
   <p>Holloway Roberts is a professional hunter and explorer, a man who has built a career on going first. He brings two men who have worked with him for years, Jed Leeder and Kirby Hook, whom everyone calls Wax. They come equipped for cold and dark: cameras, halogen lamps, cold-weather gear, and a radio to stay in touch with Navidson, Tom and Reston at the door.</p>
   <p>A spool of fishing line is tied off at the doorway, and Holloway carries the spool. As long as the line holds, the way back is simple.</p>
-  <p>The first explorations find what first explorations always find: more. The hallway branches. There are rooms off it, some the size of closets and some too large for their lamps to cross, all with the same smooth gray walls, none with a single object in them. Every so often, very far off, there is a low sound, like a growl, or like a very large building shifting its weight.<sup><a class="ref" href="#n10">10</a></sup></p>
-  <aside class="note" id="n10" data-voice="johnny" data-num="10">
+  <p>The first explorations find what first explorations always find: more. The hallway branches. There are rooms off it, some the size of closets and some too large for their lamps to cross, all with the same smooth gray walls, none with a single object in them. Every so often, very far off, there is a low sound, like a growl, or like a very large building shifting its weight.<sup><a class="ref" href="#n17">17</a></sup></p>
+  <aside class="note" id="n17" data-voice="johnny" data-num="17">
     <p>Lude and I went out last night, the way we used to. Lude collects phone numbers the way other people collect bottle caps: a little proud, a little bored, mostly for the collecting. He’s good at it. I used to be good at it.</p>
     <p>We were in a bar with mirrors on every wall, and somewhere around one in the morning I realized I’d stopped talking to the girl in front of me and was watching the mirrors, all those rooms going back and back, trying to find the one where the reflections stopped. Lude drove me home. He didn’t say anything. That’s the thing about Lude. He knows when not to.</p>
   </aside>
@@ -196,11 +248,28 @@
   <p>The explorers are professionals, and what unsettles them is not a danger they can name but the absence of anything at all: no object to find, no mark left by anyone before them, no end to report. Only distance, and the growl, and the line paying out behind them.</p>
 </section>
 
-<section class="chapter chapter-maze" id="ch6" data-title="VI. The labyrinth">
-  <h2 class="ch-head"><span class="ch-num">VI</span><span class="ch-title">The labyrinth</span></h2>
+<section class="chapter" id="samples" data-title="VIII. Older than the house">
+  <h2 class="ch-head"><span class="ch-num">VIII</span><span class="ch-title">Older than the house</span></h2>
+  <p>An engineer’s answer to a wall is a sample of it.</p>
+  <p>Navidson takes samples from the hallway walls, a little gray matter chipped from a surface that seems to give up nothing else, and Reston, who knows people at the university, has them sent to a laboratory with a note asking for an age and a composition and nothing else.<sup><a class="ref" href="#n18">18</a></sup></p>
+  <aside class="note" id="n18" data-voice="johnny" data-num="18">
+    <p>I have scars on my forearms. People ask. I tell them different things: a motorcycle, a fight, a dog, a fire in a kitchen where I used to work. Sometimes I tell the truth, which is a pot of oil and my mother and a morning when I was four, and I watch to see whether they believe it more or less than the others.</p>
+    <p>They never do. It sounds like something I made up to make the other stories seem true.</p>
+  </aside>
+  <p>The results come back in the form of a letter that begins by apologizing for them. The composition is not the problem. The age is. What the laboratory finds in the samples is older than the house, older than Virginia, older than the ground the house stands on. Older, if the figures are right, than the earth, and some of it older than anything that has ever been dated on it.<sup><a class="ref" href="#n19">19</a></sup></p>
+  <aside class="note" id="n19" data-voice="editors" data-num="19">
+    <p>The Record gives the laboratory’s figures. Zampanò gives three different versions of them, each with its own footnote, and each footnote quarrels with the others. None of the figures is repeated here.</p>
+  </aside>
+  <p>Zampanò treats this less as a revelation than as a courtesy. Of course the dark is old. The dark was here before there was anything to be dark around. What the house has done is not to create a darkness but to admit one, the way a well admits water, and what is in the bag is a small amount of the oldest thing there is, doing what it has always done, which is to wait.</p>
+  <p>One bag does not go to the laboratory. It stays on the kitchen table with Reston’s tag on it, and in the footage of the following weeks it is always somewhere in the frame, a small gray weight among the cereal boxes, being looked at and not opened.</p>
+  <p class="band-lines" aria-hidden="true"><span>No mark of any tool.</span><span>No trace of anyone.</span><span>No age that fits.</span></p>
+</section>
+
+<section class="chapter chapter-maze" id="ch6" data-title="IX. The labyrinth">
+  <h2 class="ch-head"><span class="ch-num">IX</span><span class="ch-title">The labyrinth</span></h2>
   <p>Here Zampanò’s text begins to come apart, and so does the page.</p>
-  <p>He writes about labyrinths. About Daedalus, who built the labyrinth of Crete so well that he could barely find his own way out of it.<sup><a class="ref" href="#n11">11</a></sup> About King Minos, who hid inside it the creature his queen had borne, half man and half bull, and fed it with young men and women sent from Athens. About Theseus, and the thread Ariadne gave him, which is only fishing line in a more beautiful story.</p>
-  <aside class="note" id="n11" data-voice="zampano" data-num="11">
+  <p>He writes about labyrinths. About Daedalus, who built the labyrinth of Crete so well that he could barely find his own way out of it.<sup><a class="ref" href="#n20">20</a></sup> About King Minos, who hid inside it the creature his queen had borne, half man and half bull, and fed it with young men and women sent from Athens. About Theseus, and the thread Ariadne gave him, which is only fishing line in a more beautiful story.</p>
+  <aside class="note" id="n20" data-voice="zampano" data-num="20">
     <p>Ovid again, in the eighth book of the <cite>Metamorphoses</cite>: Daedalus builds his maze so well that he himself can barely find the way back to its entrance.</p>
   </aside>
   <p>In the manuscript, the passages about the minotaur are struck through. They are kept, crossed out and red, which is how they appear here.</p>
@@ -227,12 +296,12 @@
         <p class="maze-col upside" id="upside">The house on Ash Tree Lane offers no view from above. There is no map. There may be no center. There may be something living in it, or the thing living in it may be the house itself, turning over in its sleep.</p>
         <button class="turn" type="button" data-turn="upside" aria-controls="upside">Turn the book</button>
       </div>
-      <p class="margin-scrawl voice-johnny">I can’t read the next part. I’ve tried with the pages turned every way. It’s his hand, and it runs around the edge of the sheet like it’s looking for the exit.<sup><a class="ref" href="#n12">12</a></sup></p>
-      <aside class="note" id="n12" data-voice="johnny" data-num="12">
+      <p class="margin-scrawl voice-johnny">I can’t read the next part. I’ve tried with the pages turned every way. It’s his hand, and it runs around the edge of the sheet like it’s looking for the exit.<sup><a class="ref" href="#n21">21</a></sup></p>
+      <aside class="note" id="n21" data-voice="johnny" data-num="21">
         <p>I should tell you about my mother.</p>
         <p>Her name is Pelafina. She lived for years in a place called the Three Attic Whalestoe Institute, which is a beautiful name for a place with locks on the outside of the doors. I was a kid when she went in. There was a night, and a thing she did, and afterward there were doctors, and then there was the Institute. I’ll tell you about the night some other time. Or I won’t.</p>
-        <p>She wrote to me. For years. Long letters, funny letters, letters so crazy the paper looks like it’s sweating. I kept every one.<sup><a class="ref" href="#n13">13</a></sup></p>
-        <aside class="note" id="n13" data-voice="editors" data-num="13">
+        <p>She wrote to me. For years. Long letters, funny letters, letters so crazy the paper looks like it’s sweating. I kept every one.<sup><a class="ref" href="#n22">22</a></sup></p>
+        <aside class="note" id="n22" data-voice="editors" data-num="22">
           <p>A selection appears at the end of this edition. See <a href="#letters">The Whalestoe Letters</a>.</p>
         </aside>
     </div>
@@ -243,8 +312,33 @@
   </div>
 </section>
 
-<section class="chapter" id="ch7" data-title="VII. Exploration #4">
-  <h2 class="ch-head"><span class="ch-num">VII</span><span class="ch-title">Exploration #4</span></h2>
+<section class="chapter" id="tom" data-title="X. Tom’s story">
+  <h2 class="ch-head"><span class="ch-num">X</span><span class="ch-title">Tom’s story</span></h2>
+  <p>When the fourth exploration goes wrong and his brother goes down after it, the only person in the hallway who is not lost is Tom.</p>
+  <p>He is there because the radio will not reach from the bottom of the stairs to the house. Someone has to stay at the top of the staircase, in the Great Hall, and relay what comes up from below to the people at the door. Tom stays. He is the twin who never went anywhere, the one who fixes things and tells jokes and has been sober, a day at a time, for years, and he sets a lantern and a thermos and a folding chair and a tape recorder at the lip of the well and sits down in the dark to wait.<sup><a class="ref" href="#n23">23</a></sup></p>
+  <aside class="note" id="n23" data-voice="zampano" data-num="23">
+    <p>The section of the Record devoted to Tom is known among its admirers simply as “Tom’s Story,” and it is the only part of the film with a laugh track, because the laugh is Tom’s own.</p>
+  </aside>
+  <p>He talks. He talks to the recorder, to Reston on the radio, to the wall, to the growl when it comes, which is often. He addresses it as if it were a neighbour who had complained about the noise. He tells it about his brother. He tells it jokes, most of them old, some of them not very good, and he tells them well, with the timing of a man who has spent years making a room forgive him.</p>
+  <div class="jokes voice-johnny" aria-label="Some of what he said, as Johnny copied it out">
+    <p>A man walks into a house. That is the whole joke. It just takes a while.</p>
+    <p>Knock knock. Who’s there. Nobody. Nobody who. Exactly.</p>
+    <p>My brother says this hallway is a metaphor. I said, for what. He said he’d let me know when he got to the end of it.</p>
+    <p>I asked the dark what it wanted. It said, a little more room. I said, buddy, you and me both.</p>
+  </div>
+  <p>Zampanò argues that the jokes are not a defence against the house but a measurement of it. Every joke is a small room with a door at the end; you walk in, and the door opens onto somewhere you did not expect, and you laugh because you got out. Tom sits in the dark for days building rooms with doors in them.<sup><a class="ref" href="#n24">24</a></sup></p>
+  <aside class="note" id="n24" data-voice="editors" data-num="24">
+    <p>The jokes above are not Tom’s, which are not ours to give. They are what Mr. Truant copied into the margin, in a hand that grows steadier as the list goes on.</p>
+  </aside>
+  <p>The Hall does not hold still for him. He sleeps, and wakes to find the dark arranged differently around his lantern, the lip of the well nearer or farther than it was. He does not move his chair. He records this. He says that the house has made room for him, and that this is the most anyone has done for him in some time, and then he laughs, and then for a while he does not say anything at all.</p>
+  <p>Then the radio brings up his brother’s voice, closer than it should be, and Tom stands up at the top of the stairs with the rope in his hands.<sup><a class="ref" href="#n25">25</a></sup></p>
+  <aside class="note" id="n25" data-voice="johnny" data-num="25">
+    <p>Lude wants to know why I never laugh anymore. I told him I laugh all the time. He said, name one thing. I said, a man walks into a house. He waited. I said, that’s the joke. He said it wasn’t funny. I said, give it a while.</p>
+  </aside>
+</section>
+
+<section class="chapter" id="ch7" data-title="XI. Exploration #4">
+  <h2 class="ch-head"><span class="ch-num">XI</span><span class="ch-title">Exploration #4</span></h2>
   <p>The fourth exploration is meant to last more than a week. Holloway provisions it the way he would provision an expedition into real wilderness: food, water, fuel, spares of everything. He also brings a gun.</p>
   <p>They go down the staircase farther than anyone has gone, leaving caches of supplies along the way for the climb back. Days in, they turn around. They find the caches torn open and scattered. The neon markers they left to find their way have been ripped apart. There is no sign of what did it. There is, as always, nothing in the house but them.</p>
   <div class="narrowing">
@@ -266,33 +360,57 @@
     <figcaption>The last tape, described rather than shown.</figcaption>
   </figure>
 
-  <p>His camera is found afterward. On the last tape he is alone, out of supplies and lost, talking to the dark about the creature he is sure is out there. Then he turns the gun on himself. It is not quick. For a few more minutes the camera goes on recording, and at the end, the blackness at the edges of the frame seems to move inward, as if the house were closing over him. Nothing of him is ever brought out.<sup><a class="ref" href="#n14">14</a></sup></p>
-  <aside class="note" id="n14" data-voice="johnny" data-num="14">
+  <p>His camera is found afterward. On the last tape he is alone, out of supplies and lost, talking to the dark about the creature he is sure is out there. Then he turns the gun on himself. It is not quick. For a few more minutes the camera goes on recording, and at the end, the blackness at the edges of the frame seems to move inward, as if the house were closing over him. Nothing of him is ever brought out.<sup><a class="ref" href="#n26">26</a></sup></p>
+  <aside class="note" id="n26" data-voice="johnny" data-num="26">
     <p>Haven’t been to the shop in nine days. They called. Then they called again. Then they stopped calling, which I’m pretty sure is how you get fired when nobody can be bothered to say it.</p>
     <p>I don’t shower much. The water is loud, and you can’t hear anything else while it’s running. I eat when I remember. I sleep with every light on, which is a funny thing to learn about yourself at my age. Lude came by and knocked for a long time, and I sat very still on the kitchen floor until he went away.</p>
   </aside>
 </section>
 
-<section class="chapter" id="ch8" data-title="VIII. What the house took">
-  <h2 class="ch-head"><span class="ch-num">VIII</span><span class="ch-title">What the house took</span></h2>
+<section class="chapter" id="rescue" data-title="XII. The rescue">
+  <h2 class="ch-head"><span class="ch-num">XII</span><span class="ch-title">The rescue</span></h2>
+  <p>What they hear over the radio, at the door, is a gunshot, and then a man saying that he is sorry, and then a long time of nothing.</p>
+  <p>Navidson goes in. Reston goes in after him, in the chair, which is a thing the film shows and does not explain: a man in a wheelchair on a spiral staircase, going down one step at a time on his hands, the chair lowered ahead of him on a rope. Tom stays at the top of the stairs with the radio and the rope. The two of them go down together, for days, to where the voices are.<sup><a class="ref" href="#n27">27</a></sup></p>
+  <aside class="note" id="n27" data-voice="zampano" data-num="27">
+    <p>On Reston’s descent, and on the peculiar dignity of a man carrying his own means of movement into a place that has none, see the last chapter of Delacroix-Hume, <cite>The Stair and the Wheel</cite> (Lyon: Éditions du Palier, 1998).<sup><a class="ref" href="#n28">28</a></sup></p>
+    <aside class="note" id="n28" data-voice="editors" data-num="28">
+      <p>Lyon has an Éditions du Palier. It publishes cookbooks.</p>
+    </aside>
+  </aside>
+  <p>They find Jed and Wax where Jed has dragged him, in a room off the stairs that was not there on the way down. Wax has been shot through the shoulder and is grey and cold and alive. Jed has kept him that way for two days by talking to him. Holloway is somewhere near. They can hear him moving. He does not answer when they call, and when he does answer, it is not with his voice.</p>
+  <div class="narrowing">
+    <p style="--w:30em">At the lip of the well, Tom rigs what he can for the wounded: a tripod, a pulley, the rope. He does it in the dark, by touch, with the radio on the floor beside him carrying up what is left of the voices.</p>
+    <p style="--w:24em">They bring Wax up. The staircase, which took days to go down, takes hours to climb, because the house has decided, for reasons of its own, to be shorter.</p>
+    <p style="--w:18em">Jed is behind them, and then Jed is not. Holloway is on the stairs above him with the rifle. It is the last time anyone sees Holloway’s face.</p>
+    <p style="--w:12em">Jed does not come up.</p>
+  </div>
+  <p>Zampanò writes about the rope for a long time. It is the second thread in the film, after the fishing line, and it is the one that holds. He notes that a rope is only a line that has been asked to bear weight, and that the difference between the two is not the material but the trust.<sup><a class="ref" href="#n29">29</a></sup></p>
+  <aside class="note" id="n29" data-voice="johnny" data-num="29">
+    <p>I bought rope today. I don’t know why. A hundred feet of it, from a hardware store on Pico, the good kind, the kind that costs money. It’s on the kitchen table in the bag. I keep looking at it the way you look at a phone you’re not going to answer.</p>
+  </aside>
+  <p>At the top, Karen is waiting with the children behind her, and the thing the film records is not the rescue but her face when she sees who has come up the rope, and who has not yet.</p>
+</section>
+
+<section class="chapter" id="ch8" data-title="XIII. What the house took">
+  <h2 class="ch-head"><span class="ch-num">XIII</span><span class="ch-title">What the house took</span></h2>
   <p>The house does not stay in its hallway.</p>
   <div class="torn">
     <p>After the rescue it begins to change the rooms the family lives in. Doorways open where there were walls. The growl comes up through the floorboards. And then, all at once, the house moves. The gray space tears into the living quarters, floors drop away, rooms stretch and split, and the Navidsons run for their lives through a home that is coming apart around them.</p>
   </div>
   <p class="aftermath">Tom gets Daisy out. He does not get himself out. The house takes him, the way it took Holloway.</p>
-  <p>Karen leaves with the children.<sup><a class="ref" href="#n15">15</a></sup> Navidson stays behind with the house, with the footage, and with a grief that has two names. One is Tom. The other is Delial.</p>
-  <aside class="note" id="n15" data-voice="johnny" data-num="15">
+  <p>Karen leaves with the children.<sup><a class="ref" href="#n30">30</a></sup> Navidson stays behind with the house, with the footage, and with a grief that has two names. One is Tom. The other is Delial.</p>
+  <aside class="note" id="n30" data-voice="johnny" data-num="30">
     <p>I’m leaving L.A. His pages are in a box on the passenger seat, and I buckled the seat belt around the box, which probably tells you everything.</p>
     <p>I’m going to Virginia. I’m going to find Ash Tree Lane.</p>
   </aside>
   <p>For most of the film, nobody knows what Delial means. Navidson writes it, says it, keeps coming back to it. The answer arrives late. Delial is the name he gave to the girl in his Pulitzer photograph: a starving child in Sudan, photographed with a vulture waiting close by. He took the picture. He won the prize. He has carried her into every room he has entered since, and the house, Zampanò suggests, found her there.</p>
 </section>
 
-<section class="chapter" id="ch9" data-title="IX. What some have thought">
-  <h2 class="ch-head"><span class="ch-num">IX</span><span class="ch-title">What some have thought</span></h2>
+<section class="chapter" id="ch9" data-title="XIV. What some have thought">
+  <h2 class="ch-head"><span class="ch-num">XIV</span><span class="ch-title">What some have thought</span></h2>
   <p>Karen does something no one expects. She makes films.</p>
-  <p>Separated from Navidson, far from the house, she takes the footage and begins to cut it herself. She shows it to people whose work is to know things, writers and critics and scholars, some famous and some not, and she films them watching.<sup><a class="ref" href="#n16">16</a></sup> Each of them explains the house in the language of their own trade. Every explanation is fluent, and none of them is enough. She calls it <cite>What Some Have Thought</cite>.</p>
-  <aside class="note" id="n16" data-voice="editors" data-num="16">
+  <p>Separated from Navidson, far from the house, she takes the footage and begins to cut it herself. She shows it to people whose work is to know things, writers and critics and scholars, some famous and some not, and she films them watching.<sup><a class="ref" href="#n31">31</a></sup> Each of them explains the house in the language of their own trade. Every explanation is fluent, and none of them is enough. She calls it <cite>What Some Have Thought</cite>.</p>
+  <aside class="note" id="n31" data-voice="editors" data-num="31">
     <p>The writers and scholars Karen filmed are not named in this retelling, and nothing is put in their mouths. The frames below are a paraphrase of the kinds of answer she collected.</p>
   </aside>
   <div class="strip" role="list" tabindex="0" aria-label="What Some Have Thought, frame by frame">
@@ -306,11 +424,11 @@
   <p>Then she makes a second, much shorter film, out of the footage of Navidson himself: the man at work, the man with the children, the man who could not stop looking at things. It lasts only a few minutes. It is called <cite>A Brief History of Who I Love</cite>. When she finishes it, she understands that she has to go back to Virginia.</p>
 </section>
 
-<section class="chapter" id="ch10" data-title="X. Exploration #5">
-  <h2 class="ch-head"><span class="ch-num">X</span><span class="ch-title">Exploration #5</span></h2>
+<section class="chapter" id="ch10" data-title="XV. Exploration #5">
+  <h2 class="ch-head"><span class="ch-num">XV</span><span class="ch-title">Exploration #5</span></h2>
   <p>Navidson goes back in alone.</p>
-  <p>This time he has promised no one anything. He takes supplies, his cameras, and a book to read. He goes deeper than Holloway went, past every place where the others turned back, until the staircase and the walls and even the floor seem to give out, and he is simply suspended in a dark with no dimensions at all.<sup><a class="ref" href="#n17">17</a></sup></p>
-  <aside class="note" id="n17" data-voice="johnny" data-num="17">
+  <p>This time he has promised no one anything. He takes supplies, his cameras, and a book to read. He goes deeper than Holloway went, past every place where the others turned back, until the staircase and the walls and even the floor seem to give out, and he is simply suspended in a dark with no dimensions at all.<sup><a class="ref" href="#n32">32</a></sup></p>
+  <aside class="note" id="n32" data-voice="johnny" data-num="32">
     <p>Virginia.</p>
     <p>I’m not going to describe what’s on Ash Tree Lane. I’ve started to write it down four times, and every time the sentences go wrong in the same place. I’ll tell you this much: I stood there for a long time, and I didn’t go in, and I’m not sure there was anywhere to go in to.</p>
     <p>I drove away without looking in the mirror. It’s a skill. I’ve been practicing.</p>
@@ -322,13 +440,13 @@
   <p>And then there are no more pages.</p>
 </section>
 
-<section class="chapter" id="ch11" data-title="XI. Vermont">
-  <h2 class="ch-head"><span class="ch-num">XI</span><span class="ch-title">Vermont</span></h2>
+<section class="chapter" id="ch11" data-title="XVI. Vermont">
+  <h2 class="ch-head"><span class="ch-num">XVI</span><span class="ch-title">Vermont</span></h2>
   <p>Karen goes into the house.</p>
   <p>The woman who could not bear a closed room walks into the dark of Ash Tree Lane to look for him. And she finds him, alive, starved, badly frostbitten and hurt, in a place that should have kept him.</p>
   <p>They come out together. They leave Virginia. In Vermont, at last, they marry.</p>
-  <p>Zampanò’s study does not end with an explanation, because there is none to give. There is only a family that went into a house larger than itself, and a man who learned, too late and then just in time, that the thing worth documenting had always been the person holding the light.<sup><a class="ref" href="#n18">18</a></sup></p>
-  <aside class="note" id="n18" data-voice="johnny" data-num="18">
+  <p>Zampanò’s study does not end with an explanation, because there is none to give. There is only a family that went into a house larger than itself, and a man who learned, too late and then just in time, that the thing worth documenting had always been the person holding the light.<sup><a class="ref" href="#n33">33</a></sup></p>
+  <aside class="note" id="n33" data-voice="johnny" data-num="33">
     <p>Lude’s dead. Motorcycle. They said it was quick, the way people always say it was quick.</p>
     <p>I haven’t stayed anywhere long since. Last week, in a bar in a town I won’t name, a band came on and started to play, and by the second song I understood the songs were about the house. About Navidson and Karen and the stairs. Songs about a book nobody has published, a book that as far as I know is still just paper in a box in my car.</p>
     <p>Afterward I asked them where it came from, and what they told me doesn’t fit anything I know.</p>
@@ -337,11 +455,11 @@
   </aside>
 </section>
 
-<section class="appendix voice-pelafina" id="letters" data-title="Appendix. The Whalestoe Letters">
+<section class="appendix voice-pelafina" id="letters" data-title="Appendix I. The Whalestoe Letters">
   <header class="appendix-head">
-    <p class="appendix-kicker">Appendix</p>
+    <p class="appendix-kicker">Appendix I</p>
     <h2 class="appendix-title">The Whalestoe Letters</h2>
-    <p class="appendix-ed voice-editors">Pelafina H. Lièvre wrote to her son for years from the Three Attic Whalestoe Institute, and her letters, in the book, are one of its great hidden rooms. The three below are not hers. They are imagined in her manner, for this retelling. Hers are in the book.</p>
+    <p class="appendix-ed voice-editors">Pelafina H. Lièvre wrote to her son for years from the Three Attic Whalestoe Institute, and her letters, in the book, are one of its great hidden rooms. The six below are not hers. They are imagined in her manner, for this retelling. Hers are in the book.</p>
   </header>
 
   <article class="letter">
@@ -362,6 +480,26 @@
     <p class="decoded" data-decoded aria-live="polite" hidden></p>
   </article>
 
+  <article class="letter">
+    <p class="letter-salute">My dear Johnny,</p>
+    <p>There is a man here who counts the ceiling. Every morning, before the trays, he lies on his back in the day room and counts the tiles aloud, and every morning the number is different, and every morning he is calm about it. I asked him how he could bear it. He said that the tiles were not the problem. The problem, he said, was people who counted once and believed it.</p>
+    <p>I think of you counting. I think of you at four, counting the stairs to the landing and arriving at a different number from mine and insisting, with your whole small body, that the stairs had changed. They had not, my love. I checked. I have checked every day since.</p>
+    <p class="letter-close">Your loving<br>Mother</p>
+  </article>
+
+  <article class="letter">
+    <p class="letter-salute">Johnny,</p>
+    <p>You ask about the house we lived in before. I will tell you what I can, which is the kitchen: the yellow of it, the window over the sink that would not close, your father at the table with his hands around a cup as if it were the last warm thing on earth. He was a kind man. He was kind in a way that took up very little room, and so we did not notice, until the room was empty, how much of it had been his.</p>
+    <p>Everything after that is a hallway. I would rather not walk you down it. Ask me about the kitchen again, and I will tell you the same things, and they will still be true.</p>
+    <p class="letter-close">Your loving<br>Mother</p>
+  </article>
+
+  <article class="letter letter-shout">
+    <p class="letter-salute">JOHNNY</p>
+    <p>THEY HAVE MOVED ME. The new room is smaller by exactly the width of a door and I have measured it with my hands, twice, and they say it is the same room and that I have not been moved at all, and I know, my darling, I know what it is to be told the walls have not come closer, so I will not tell you that. I will tell you only that the window here is on the wrong side, and that the pine is gone from it, and that I am WRITING THIS DOWN so that one of us will have it in writing.</p>
+    <p class="letter-close">Your<br>Mother</p>
+  </article>
+
   <article class="letter letter-late">
     <p class="letter-salute">Johnny,</p>
     <p>they tell me you do not want my letters. They tell me a great many things. I will write anyway, the way the sea writes on the beach, over and over, and no one asks it to.</p>
@@ -370,10 +508,93 @@
   </article>
 </section>
 
+<section class="appendix voice-editors" id="exhibits" data-title="Appendix II. Exhibits and contrary evidence">
+  <header class="appendix-head">
+    <p class="appendix-kicker">Appendix II</p>
+    <h2 class="appendix-title">Exhibits and contrary evidence</h2>
+    <p class="appendix-ed">Zampanò refers throughout to a set of exhibits: documents, stills, objects, that were to accompany the study. The trunk did not contain them. Mr. Truant’s notes on their absence are given after each entry. The section on contrary evidence is Zampanò’s own, and was found in the trunk in a sealed envelope marked <em>read last</em>.</p>
+  </header>
+
+  <ol class="exhibits">
+    <li><span class="ex-num">Exhibit One.</span> A floor plan of the house on Ash Tree Lane, drawn by Navidson on the day they moved in, with every room measured. <span class="ex-missing voice-johnny">Not in the trunk. There was a rectangle of less-yellow paper on top of the pile, the size a folded plan would be.</span></li>
+    <li><span class="ex-num">Exhibit Two.</span> The same plan, redrawn by Reston after the closet appeared. <span class="ex-missing voice-johnny">Not in the trunk.</span></li>
+    <li><span class="ex-num">Exhibit Three.</span> A still from <cite>The Five and a Half Minute Hallway</cite>: the doorway, the family, the beam that ends in nothing. <span class="ex-missing voice-johnny">Not in the trunk. I have seen it anyway. Everyone has. Nobody can say where.</span></li>
+    <li><span class="ex-num">Exhibit Four.</span> The laboratory’s letter concerning the samples, with its three ages. <span class="ex-missing voice-johnny">Not in the trunk. There is a photocopy of an envelope with a university seal on it, and nothing inside the photocopy.</span></li>
+    <li><span class="ex-num">Exhibit Five.</span> Reston’s maps, all of them, laid over one another on a light table. <span class="ex-missing voice-johnny">Not in the trunk. He describes the light table for two pages. He never says what it showed.</span></li>
+    <li><span class="ex-num">Exhibit Six.</span> A transcript of Tom’s tapes. <span class="ex-missing voice-johnny">Not in the trunk. I wrote the jokes down from memory, which means from his memory, which means from nowhere.</span></li>
+    <li><span class="ex-num">Exhibit Seven.</span> Holloway’s last tape, described frame by frame. <span class="ex-missing voice-johnny">This one was there. It is one page long. I have not put it in.</span></li>
+    <li><span class="ex-num">Exhibit Eight.</span> A list of everything found in the house after the family left it. <span class="ex-missing voice-johnny">One line. It says: nothing, and the light.</span></li>
+    <li><span class="ex-num">Exhibit Nine.</span> The photograph. Delial. <span class="ex-missing voice-johnny">Not in the trunk. I am glad.</span></li>
+  </ol>
+
+  <h3 class="appendix-sub">Contrary evidence</h3>
+  <p class="appendix-ed">Arguments, collected by Zampanò, that the Record is a fabrication. He answers none of them.</p>
+  <ol class="contrary">
+    <li>No county in Virginia has a record of a house on a road called Ash Tree Lane changing hands in the year the film gives.</li>
+    <li>No one named Holloway Roberts has ever held a hunting licence in any state in which the film says he hunted.</li>
+    <li>The university whose laboratory dated the samples has no record of the request, the letter, or the man who is supposed to have signed it.</li>
+    <li>The Pulitzer Prize for the photograph the film calls Delial was awarded, in the year it gives, to someone else, for something else.</li>
+    <li>A house cannot be larger on the inside than on the outside.</li>
+    <li>The film does not exist.</li>
+  </ol>
+  <p class="appendix-ed contrary-close">To the last of these, in the margin, in a hand that is neither Zampanò’s nor any of his readers’, someone has written: <em>neither do you</em>.</p>
+</section>
+
+<section class="index-section voice-editors" id="index" data-title="Index">
+  <header class="appendix-head">
+    <p class="appendix-kicker">Index</p>
+    <h2 class="appendix-title">Index</h2>
+    <p class="appendix-ed">Compiled by the editors. Where a page number should be, this edition gives the height at which the word occurs, measured from the inside. Entries marked <abbr title="does not exist">DNE</abbr> refer to things the text names and the house does not contain.</p>
+  </header>
+  <dl class="index-list">
+    <div><dt>and</dt><dd>passim</dd></div>
+    <div><dt>ash</dt><dd>3,140 px, 3,142 px, 9,801 px</dd></div>
+    <div><dt>Ash Tree Lane</dt><dd>1 px, and every page after</dd></div>
+    <div><dt>attic</dt><dd>DNE</dd></div>
+    <div><dt>basement</dt><dd>DNE</dd></div>
+    <div><dt>book, burning of</dt><dd>21,338 px to 21,904 px</dd></div>
+    <div><dt>bottom</dt><dd>DNE</dd></div>
+    <div><dt>Chad</dt><dd>2,204 px, 17,140 px</dd></div>
+    <div><dt>closet</dt><dd>4,010 px, 4,113 px</dd></div>
+    <div><dt>cold</dt><dd>5,512 px, 12,077 px, 12,301 px</dd></div>
+    <div><dt>Daisy</dt><dd>2,204 px, 17,166 px</dd></div>
+    <div><dt>Delial</dt><dd>17,402 px, 17,466 px, 24,010 px</dd></div>
+    <div><dt>door, front</dt><dd>2,010 px, 25,530 px</dd></div>
+    <div><dt>door, that was not there</dt><dd>4,004 px</dd></div>
+    <div><dt>echo</dt><dd>7,300 px to 7,980 px</dd></div>
+    <div><dt>fishing line</dt><dd>8,844 px, 10,411 px, 19,650 px</dd></div>
+    <div><dt>growl</dt><dd>8,905 px, 12,160 px, 13,004 px, 16,588 px</dd></div>
+    <div><dt>Hillary</dt><dd>2,388 px, 5,902 px</dd></div>
+    <div><dt>Holloway Roberts</dt><dd>8,701 px to 13,212 px; last seen, 19,910 px</dd></div>
+    <div><dt>house</dt><dd>passim, in blue</dd></div>
+    <div><dt>inch, a quarter of an</dt><dd>3,990 px</dd></div>
+    <div><dt>inch, five sixteenths of an</dt><dd>4,206 px</dd></div>
+    <div><dt>Jed Leeder</dt><dd>8,720 px, 19,880 px</dd></div>
+    <div><dt>Karen Green</dt><dd>2,190 px, 6,100 px to 6,980 px, 25,400 px</dd></div>
+    <div><dt>Lude</dt><dd>1,020 px, 9,344 px, 16,802 px, 26,077 px</dd></div>
+    <div><dt>Mallory</dt><dd>2,390 px, 5,902 px</dd></div>
+    <div><dt>map</dt><dd>6,830 px, 7,090 px; agreeing with itself, DNE</dd></div>
+    <div><dt>minotaur</dt><dd>11,410 px, struck through</dd></div>
+    <div><dt>not</dt><dd>passim</dd></div>
+    <div><dt>Pelafina H. Lièvre</dt><dd>11,760 px, 27,000 px to 29,500 px</dd></div>
+    <div><dt>Reston, Billy</dt><dd>4,140 px, 6,700 px, 13,880 px, 19,790 px</dd></div>
+    <div><dt>samples</dt><dd>13,860 px to 14,410 px</dd></div>
+    <div><dt>staircase</dt><dd>7,166 px, 8,990 px, 12,020 px; bottom of, DNE</dd></div>
+    <div><dt>switch, light</dt><dd>DNE</dd></div>
+    <div><dt>Thumper</dt><dd>2,560 px, 6,588 px</dd></div>
+    <div><dt>Tom Navidson</dt><dd>4,120 px, 15,200 px to 15,900 px, 17,100 px</dd></div>
+    <div><dt>Wax (Kirby Hook)</dt><dd>8,720 px, 12,900 px, 19,860 px</dd></div>
+    <div><dt>well</dt><dd>6,330 px, 19,700 px</dd></div>
+    <div><dt>window</dt><dd>in the house, 2,010 px; in the hallway, DNE</dd></div>
+    <div><dt>Zampanò</dt><dd>880 px; the rest is his</dd></div>
+  </dl>
+</section>
+
 <section class="colophon voice-editors" id="colophon" data-title="Colophon">
   <p><strong>Ash Tree Lane</strong> is an unofficial, non-commercial tribute, made by a reader. It retells the story of <cite>House of Leaves</cite> by Mark Z. Danielewski (Pantheon Books, 2000) in new words. The novel’s text is not reproduced here, and where the book is silent, a few small details have been invented. The chapter divisions are this retelling’s own. The characters, the events and the house belong to the book.</p>
   <p>Read it. Nothing here replaces the weight of it in your hands.</p>
   <p class="colophon-meta">Written and built by hand in HTML, CSS and JavaScript, with three.js for the house. No cookies, no tracking. What you find is kept only in your own browser, so the house can remember you. The source is on <a href="https://github.com/Pazificateur69/ash-tree-lane">GitHub</a>.</p>
+  <p class="colophon-meta">The furniture and the things you pick up are glTF models from the Khronos sample assets (Microsoft, UX3D, Wayfair and Khronos, under CC0 and CC BY 4.0) and from the three.js examples; the floorboards, the brick and the night sky are from the three.js examples too. The plaster, the ash-gray of the hallway, the labels and the pages were made for this site.</p>
   </section>
 </template>
 

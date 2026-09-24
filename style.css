@@ -958,3 +958,66 @@ main > .colophon {
   .threshold-word { transform: none; margin-left: -.04em; }
   .maze-col { text-align: left; }
 }
+
+/* ---------- loading, recording ---------- */
+
+.loading {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: grid;
+  place-content: center;
+  gap: 18px;
+  background: #030304;
+  color: var(--moon);
+  text-align: center;
+  font-family: var(--j);
+  transition: opacity 1.4s ease;
+}
+.loading.off { opacity: 0; pointer-events: none; }
+.loading-word { margin: 0; font-family: var(--z); font-size: clamp(3rem, 9vw, 5.5rem); line-height: 1; color: #7d96ff; letter-spacing: -.01em; }
+.loading-bar { width: min(60vw, 22rem); height: 1px; margin: 0 auto; background: rgba(217, 216, 210, .18); }
+.loading-bar i { display: block; height: 100%; width: 0; background: var(--moon); transition: width .4s ease; }
+.loading-text { margin: 0; font-size: .78rem; color: rgba(217, 216, 210, .6); font-variant-numeric: tabular-nums; }
+.hud-rec {
+  position: absolute;
+  left: var(--gutter); top: 16px;
+  display: flex; align-items: center; gap: .6em;
+  margin: 0;
+  font-size: .78rem;
+  letter-spacing: .1em;
+  color: rgba(217, 216, 210, .7);
+  font-variant-numeric: tabular-nums;
+}
+.rec-dot { width: .6em; height: .6em; border-radius: 50%; background: #e0352b; animation: rec 1.2s steps(2) infinite; }
+.hud-corner { top: 12px; }
+@media (max-width: 640px) { .hud-rec { top: auto; bottom: 44px; } .hud-corner { flex-wrap: wrap; justify-content: end; max-width: 60vw; } }
+
+/* ---------- X. Tom's jokes, XII. the rope ---------- */
+
+.jokes { margin: 2em 0 2.2em; padding-left: 1.4em; border-left: 1px solid var(--rule); font-size: .9em; }
+.jokes p { margin: 0 0 .9em; text-indent: 0; color: var(--ink-2); }
+.chapter > .jokes + p { text-indent: 0; }
+
+/* ---------- appendix II, index ---------- */
+
+.appendix-sub { margin: 4em 0 .6em; font-weight: 400; font-size: 1rem; font-variant: all-small-caps; letter-spacing: .18em; text-align: center; }
+.exhibits, .contrary { margin: 2.5em 0; padding: 0; list-style: none; counter-reset: none; }
+.exhibits li { margin: 0 0 1.3em; padding-left: 1.4em; text-indent: -1.4em; }
+.ex-num { font-variant: all-small-caps; letter-spacing: .12em; }
+.ex-missing { display: block; margin-top: .3em; padding-left: 1.4em; text-indent: 0; font-size: .82em; color: var(--ink-2); }
+.contrary { max-width: 30rem; margin-inline: auto; counter-reset: contrary; }
+.contrary li { position: relative; margin: 0 0 1em; padding-left: 2.2em; counter-increment: contrary; }
+.contrary li::before { content: counter(contrary) "."; position: absolute; left: 0; color: var(--ink-3); font-family: var(--z); }
+.contrary li:last-child { font-style: italic; }
+.contrary-close { margin-top: 3em; text-align: center; }
+.index-section { padding-top: 1rem; }
+.index-list { display: grid; grid-template-columns: 1fr 1fr; gap: .35em 2.5em; margin: 0; font-size: .86em; line-height: 1.5; }
+.index-list div { break-inside: avoid; }
+.index-list dt { display: inline; }
+.index-list dt::after { content: ", "; }
+.index-list dd { display: inline; margin: 0; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.index-list abbr { text-decoration: none; letter-spacing: .06em; }
+@media (max-width: 640px) { .index-list { grid-template-columns: 1fr; } }
+.letter-shout { font-variant-caps: normal; }
+.letter-shout .letter-salute { font-style: normal; letter-spacing: .1em; }

@@ -1,5 +1,6 @@
 // node check.mjs: the structural things that break silently when the text is edited
 import { readFileSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 
 const read = f => readFileSync(new URL(f, import.meta.url), 'utf8');
 const html = read('./index.html'), css = read('./style.css'), js = read('./game.js');
@@ -27,10 +28,20 @@ const groups = (js.match(/GROUPS = \[([\d, ]+)\]/)?.[1] ?? '').split(',').map(Nu
 ok(initials === 'whoiswritingyou', `cipher spells "${initials}"`);
 ok(groups.reduce((a, b) => a + b, 0) === initials.length, 'decoder groups do not cover the cipher');
 
+// every page of the book is in the journal's order, and everything the house can unlock is a page
+for (const [, id] of html.matchAll(/<section [^>]*id="([\w-]+)" data-title=/g)) ok(js.includes(`'${id}'`), `section #${id} is not in the journal order`);
+// the assets the house asks for exist
+
+for (const [, name] of js.matchAll(/T\('([\w.]+)'/g)) ok(existsSync(new URL('./assets/textures/' + name, import.meta.url)), `texture ${name} is missing`);
+for (const [, name] of js.matchAll(/model\('([\w]+)'/g)) ok(existsSync(new URL('./assets/models/' + name + '.glb', import.meta.url)), `model ${name} is missing`);
+for (const [, name] of js.matchAll(/M\.label\('([\w.]+)'/g)) ok(existsSync(new URL('./assets/textures/' + name, import.meta.url)), `label ${name} is missing`);
+for (const [, path] of html.matchAll(/"(\.\/vendor\/[^"]+\.js)"/g)) ok(existsSync(new URL(path, import.meta.url)), `${path} is missing`);
 // everything the house can unlock is a page of the book
 for (const [, id] of js.matchAll(/(?:unlock\('|chapter: ')([\w]+)'/g)) ok(html.includes(`id="${id}"`), `unlock('${id}') has no page`);
-for (const id of ['edition', 'introduction', 'ch1', 'ch2', 'ch3', 'ch4', 'ch5', 'ch6', 'ch7', 'ch8', 'ch9', 'ch10', 'ch11', 'letters', 'colophon']) ok(new RegExp(`id="${id}" data-title="`).test(html), `${id} has no data-title`);
+const ORDER = (js.match(/const ORDER = \[([^\]]+)\]/)?.[1] ?? '').split(',').map(s => s.trim().replace(/'/g, '')).filter(Boolean);
+ok(ORDER.length === 22, `journal order has ${ORDER.length} pages`);
+for (const id of ORDER) ok(new RegExp(`id="${id}" data-title="`).test(html), `${id} has no data-title`);
 for (const [, id] of html.matchAll(/href="#([\w-]+)"/g)) ok(html.includes(`id="${id}"`), `#${id} has no target`);
 
 if (fail.length) { console.error(fail.join('\n')); process.exit(1); }
-console.log(`ok: ${refs.length} notes, cipher "${initials}", no dashes`);
+console.log(`ok: ${ORDER.length} pages, ${refs.length} notes, cipher "${initials}", no dashes`);
