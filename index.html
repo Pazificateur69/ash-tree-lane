@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ash Tree Lane · a retelling of House of Leaves</title>
-<meta name="description" content="An unofficial retelling of Mark Z. Danielewski's House of Leaves, in new words, for the web.">
+<meta name="description" content="Walk through the house on Ash Tree Lane and bring the story out. An unofficial retelling of Mark Z. Danielewski's House of Leaves.">
 <meta property="og:title" content="Ash Tree Lane">
 <meta property="og:description" content="An unofficial retelling of Mark Z. Danielewski's House of Leaves, in new words, for the web.">
 <meta property="og:type" content="website">
@@ -17,17 +17,10 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Sorts+Mill+Goudy:ital@0;1&family=Tinos:ital,wght@0,400;0,700;1,400&display=swap">
 <link rel="stylesheet" href="style.css">
 <script>document.documentElement.classList.add('js')</script>
-<script src="main.js" defer></script>
+<script src="game.js" defer></script>
 </head>
 <body>
-<a class="skip" href="#introduction">Skip to the text</a>
-
-<header class="runhead">
-  <a class="runhead-site" href="#top">Ash Tree Lane</a>
-  <span class="runhead-chapter"></span>
-  <button class="runhead-contents" type="button" aria-haspopup="dialog">Contents</button>
-</header>
-<p class="folio" aria-hidden="true"></p>
+<a class="skip" href="#enter">Skip to the door</a>
 
 <main>
 
@@ -43,16 +36,49 @@
     <p class="measure-note" data-visit-note hidden></p>
   </div>
   <div class="threshold-foot">
-    <p>An unofficial retelling of <cite>House of Leaves</cite> by Mark Z. Danielewski.</p>
-    <a class="enter" href="#edition">Open the door</a>
+    <p>An unofficial retelling of <cite>House of Leaves</cite> by Mark Z. Danielewski. The house is empty. Walk through it and bring out what you find.</p>
+    <div class="threshold-actions">
+      <button class="enter" id="enter" type="button">Open the door</button>
+      <button class="read-instead" type="button" data-read>or just read</button>
+    </div>
   </div>
 </section>
 
+<section class="game" id="game" hidden aria-label="The house">
+  <canvas class="game-canvas" aria-label="The house on Ash Tree Lane, seen through your own light"></canvas>
+  <div class="hud">
+    <p class="hud-meter" data-meter aria-hidden="true"></p>
+    <p class="hud-sub" data-sub aria-live="polite"></p>
+    <button class="hud-prompt" type="button" data-prompt hidden></button>
+    <div class="hud-corner">
+      <button class="hud-btn" type="button" data-sound>Sound on</button>
+      <button class="hud-btn" type="button" data-journal>Journal</button>
+    </div>
+  </div>
+  <div class="veil" data-veil hidden><p>Click to go on</p></div>
+  <div class="card" data-card hidden></div>
+</section>
+
+</main>
+
+<aside class="journal" id="journal" hidden aria-label="The journal">
+  <div class="journal-frame">
+    <header class="journal-head">
+      <span class="journal-title">The journal</span>
+      <span class="journal-count" data-count></span>
+      <button class="journal-close" type="button" data-close>Close</button>
+    </header>
+    <nav class="journal-nav" aria-label="Pages found"><ol data-contents></ol></nav>
+    <div class="journal-page" data-page tabindex="-1"></div>
+  </div>
+</aside>
+
+<template id="book">
 <section class="edition voice-editors" id="edition" data-title="A note on this edition">
   <h2 class="edition-title">A note on this edition</h2>
   <p>This is not the book. It is a retelling of one, in new words, by a reader who could not stop thinking about it.</p>
   <p>The book has several voices, and so does this. An old blind man writes the main text, a study of a film that does not exist; he speaks in Times. A tattoo apprentice who found his papers keeps interrupting him in Courier. The editors interrupt them both, in Bookman. At the back, a mother writes letters in Goudy.</p>
-  <p>The small numbers open their notes. Notes open other notes. Some passages are doors, and a door, here, is something you can walk through.</p>
+  <p>The small numbers open their notes. Notes open other notes. The rest is in the house: what you find there is added here, in the order you find it.</p>
 </section>
 
 <section class="intro voice-johnny" id="introduction" data-title="Introduction">
@@ -70,14 +96,6 @@
   <p class="signature">Johnny Truant</p>
 </section>
 
-<article class="record voice-zampano" id="record" aria-label="The Navidson Record">
-
-<header class="record-head">
-  <p class="record-kicker">Zampanò</p>
-  <h2 class="record-title">The Navidson Record</h2>
-</header>
-
-<!-- I -->
 <section class="chapter" id="ch1" data-title="I. Ash Tree Lane">
   <h2 class="ch-head"><span class="ch-num">I</span><span class="ch-title">Ash Tree Lane</span></h2>
   <p><cite>The Navidson Record</cite> begins as the least remarkable film imaginable: a family moving house.</p>
@@ -98,7 +116,6 @@
   <p>It is worth watching those minutes closely. It is the last time the house is the size it claims to be.</p>
 </section>
 
-<!-- II -->
 <section class="chapter" id="ch2" data-title="II. A quarter of an inch">
   <h2 class="ch-head"><span class="ch-num">II</span><span class="ch-title">A quarter of an inch</span></h2>
   <p>The first anomaly is so small that the film nearly misses it.</p>
@@ -122,7 +139,6 @@
   <p>Zampanò devotes many pages to the idea that the smallness is the horror. We can live with the enormous, he argues, because the enormous is always somewhere else. The small discrepancy lives in the bedroom. It sleeps down the hall from the children.</p>
 </section>
 
-<!-- III -->
 <section class="chapter" id="ch3" data-title="III. The hallway">
   <h2 class="ch-head"><span class="ch-num">III</span><span class="ch-title">The hallway</span></h2>
   <p>Then, one day, the living room has another door.</p>
@@ -132,19 +148,7 @@
     <p>The tape was copied and recopied until the hallway was more grain than hallway. Several writers have argued that the degradation is part of its power: the less clearly we see, the more the dark is allowed to do. See Mirela Oszko, “The Poor Image and the Rich Dark,” <cite>Quarterly of the Uncertain Image</cite> 14 (1997): 3-29.</p>
   </aside>
 
-  <div class="hallway-band" role="group" aria-label="The hallway">
-    <div class="band-inner">
-      <button class="door door-hall" type="button" data-explore="hallway">
-        <span class="door-shape" aria-hidden="true"></span>
-        <span class="door-label">Go in</span>
-      </button>
-      <p class="band-receipt voice-johnny" data-receipt="hallway" hidden></p>
-      <p class="band-line">No fixtures.</p>
-      <p class="band-line">No switches.</p>
-      <p class="band-line">No seams.</p>
-      <p class="band-note voice-editors" data-band-note hidden></p>
-    </div>
-  </div>
+  <p class="band-lines" aria-hidden="true"><span>No fixtures.</span><span>No switches.</span><span>No seams.</span></p>
 
   <p>Navidson goes in. He is not gone long, but long enough to get lost, and when he comes back out he is not quite the man who went in.<sup><a class="ref" href="#n7">7</a></sup> Karen makes him promise never to go in again. She is claustrophobic and afraid of the dark, and she has already understood something he refuses to: the house is not a subject. It is not going to hold still to be photographed.</p>
   <aside class="note" id="n7" data-voice="johnny" data-num="7">
@@ -156,7 +160,6 @@
   <p>The cameras keep running. The house keeps being wrong.</p>
 </section>
 
-<!-- IV -->
 <section class="chapter" id="ch4" data-title="IV. Echoes">
   <h2 class="ch-head"><span class="ch-num">IV</span><span class="ch-title">Echoes</span></h2>
   <p>Zampanò interrupts the story here for a long meditation on echoes, and it is not the digression it appears to be.</p>
@@ -177,7 +180,6 @@
   </div>
 </section>
 
-<!-- V -->
 <section class="chapter" id="ch5" data-title="V. Holloway">
   <h2 class="ch-head"><span class="ch-num">V</span><span class="ch-title">Holloway</span></h2>
   <p>Navidson keeps his promise the way people keep promises they resent. He does not go into the hallway himself. He hires someone to go instead.</p>
@@ -190,18 +192,10 @@
   </aside>
   <p>And then they find the Great Hall, a space so vast that their halogen lamps simply give up, and in it, a spiral staircase going down.</p>
 
-  <div class="stairwell">
-    <button class="door door-stair" type="button" data-explore="stair">
-      <span class="door-shape" aria-hidden="true"></span>
-      <span class="door-label">Go down</span>
-    </button>
-    <p class="band-receipt voice-johnny" data-receipt="stair" hidden></p>
-  </div>
 
   <p>The explorers are professionals, and what unsettles them is not a danger they can name but the absence of anything at all: no object to find, no mark left by anyone before them, no end to report. Only distance, and the growl, and the line paying out behind them.</p>
 </section>
 
-<!-- VI -->
 <section class="chapter chapter-maze" id="ch6" data-title="VI. The labyrinth">
   <h2 class="ch-head"><span class="ch-num">VI</span><span class="ch-title">The labyrinth</span></h2>
   <p>Here Zampanò’s text begins to come apart, and so does the page.</p>
@@ -249,7 +243,6 @@
   </div>
 </section>
 
-<!-- VII -->
 <section class="chapter" id="ch7" data-title="VII. Exploration #4">
   <h2 class="ch-head"><span class="ch-num">VII</span><span class="ch-title">Exploration #4</span></h2>
   <p>The fourth exploration is meant to last more than a week. Holloway provisions it the way he would provision an expedition into real wilderness: food, water, fuel, spares of everything. He also brings a gun.</p>
@@ -280,7 +273,6 @@
   </aside>
 </section>
 
-<!-- VIII -->
 <section class="chapter" id="ch8" data-title="VIII. What the house took">
   <h2 class="ch-head"><span class="ch-num">VIII</span><span class="ch-title">What the house took</span></h2>
   <p>The house does not stay in its hallway.</p>
@@ -296,7 +288,6 @@
   <p>For most of the film, nobody knows what Delial means. Navidson writes it, says it, keeps coming back to it. The answer arrives late. Delial is the name he gave to the girl in his Pulitzer photograph: a starving child in Sudan, photographed with a vulture waiting close by. He took the picture. He won the prize. He has carried her into every room he has entered since, and the house, Zampanò suggests, found her there.</p>
 </section>
 
-<!-- IX -->
 <section class="chapter" id="ch9" data-title="IX. What some have thought">
   <h2 class="ch-head"><span class="ch-num">IX</span><span class="ch-title">What some have thought</span></h2>
   <p>Karen does something no one expects. She makes films.</p>
@@ -315,7 +306,6 @@
   <p>Then she makes a second, much shorter film, out of the footage of Navidson himself: the man at work, the man with the children, the man who could not stop looking at things. It lasts only a few minutes. It is called <cite>A Brief History of Who I Love</cite>. When she finishes it, she understands that she has to go back to Virginia.</p>
 </section>
 
-<!-- X -->
 <section class="chapter" id="ch10" data-title="X. Exploration #5">
   <h2 class="ch-head"><span class="ch-num">X</span><span class="ch-title">Exploration #5</span></h2>
   <p>Navidson goes back in alone.</p>
@@ -328,18 +318,10 @@
   <p>His supplies run out. His lights die, one after another. What he has left is the book, and something to set it alight.</p>
   <p>So he reads it the only way he can. He tears out a page, burns it, and reads the next page by its light. Page by page, the book becomes light, and then ash. The camera records the title on its cover. It is called <cite>House of Leaves</cite>.</p>
 
-  <div class="matchbox">
-    <button class="door door-match" type="button" data-explore="match">
-      <span class="door-shape" aria-hidden="true"></span>
-      <span class="door-label">Light a page</span>
-    </button>
-    <p class="band-receipt voice-johnny" data-receipt="match" hidden></p>
-  </div>
 
   <p>And then there are no more pages.</p>
 </section>
 
-<!-- XI -->
 <section class="chapter" id="ch11" data-title="XI. Vermont">
   <h2 class="ch-head"><span class="ch-num">XI</span><span class="ch-title">Vermont</span></h2>
   <p>Karen goes into the house.</p>
@@ -354,8 +336,6 @@
     <p>Tonight I’m sitting under a tree at the edge of a field. It’s cold, but the regular kind of cold. There’s a whole sky over me and it is exactly as big as it looks. I keep telling myself it’s going to be all right, and for once I almost believe me.</p>
   </aside>
 </section>
-
-</article>
 
 <section class="appendix voice-pelafina" id="letters" data-title="Appendix. The Whalestoe Letters">
   <header class="appendix-head">
@@ -390,41 +370,12 @@
   </article>
 </section>
 
-<footer class="colophon voice-editors" id="colophon" data-title="Colophon">
+<section class="colophon voice-editors" id="colophon" data-title="Colophon">
   <p><strong>Ash Tree Lane</strong> is an unofficial, non-commercial tribute, made by a reader. It retells the story of <cite>House of Leaves</cite> by Mark Z. Danielewski (Pantheon Books, 2000) in new words. The novel’s text is not reproduced here, and where the book is silent, a few small details have been invented. The chapter divisions are this retelling’s own. The characters, the events and the house belong to the book.</p>
   <p>Read it. Nothing here replaces the weight of it in your hands.</p>
-  <p class="colophon-meta">Written and built by hand in plain HTML, CSS and JavaScript. No cookies, no tracking. Your visits are counted only in your own browser, so the house can grow.</p>
-  <p class="colophon-time" data-time-inside></p>
-</footer>
-
-</main>
-
-<dialog class="contents" id="contents" aria-labelledby="contents-title">
-  <form method="dialog" class="contents-close"><button type="submit">Close</button></form>
-  <h2 id="contents-title">Contents</h2>
-  <ol class="contents-list">
-    <li><a href="#edition">A note on this edition</a></li>
-    <li><a href="#introduction">Introduction</a></li>
-    <li><a href="#ch1">I. Ash Tree Lane</a></li>
-    <li><a href="#ch2">II. A quarter of an inch</a></li>
-    <li><a href="#ch3">III. The hallway</a></li>
-    <li><a href="#ch4">IV. Echoes</a></li>
-    <li><a href="#ch5">V. Holloway</a></li>
-    <li><a href="#ch6">VI. The labyrinth</a></li>
-    <li><a href="#ch7">VII. Exploration #4</a></li>
-    <li><a href="#ch8">VIII. What the house took</a></li>
-    <li><a href="#ch9">IX. What some have thought</a></li>
-    <li><a href="#ch10">X. Exploration #5</a></li>
-    <li><a href="#ch11">XI. Vermont</a></li>
-    <li><a href="#letters">Appendix. The Whalestoe Letters</a></li>
-  </ol>
-  <h3>Rooms</h3>
-  <ul class="contents-rooms">
-    <li><button type="button" data-explore="hallway">The hallway</button></li>
-    <li><button type="button" data-explore="stair">The staircase</button></li>
-    <li><button type="button" data-explore="match">The last pages</button></li>
-  </ul>
-</dialog>
+  <p class="colophon-meta">Written and built by hand in HTML, CSS and JavaScript, with three.js for the house. No cookies, no tracking. What you find is kept only in your own browser, so the house can remember you.</p>
+  </section>
+</template>
 
 <div class="leaves" id="leaves"></div>
 

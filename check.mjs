@@ -2,7 +2,7 @@
 import { readFileSync } from 'node:fs';
 
 const read = f => readFileSync(new URL(f, import.meta.url), 'utf8');
-const html = read('./index.html'), css = read('./style.css'), js = read('./main.js');
+const html = read('./index.html'), css = read('./style.css'), js = read('./game.js');
 const fail = [];
 const ok = (cond, msg) => { if (!cond) fail.push(msg); };
 
@@ -27,8 +27,9 @@ const groups = (js.match(/GROUPS = \[([\d, ]+)\]/)?.[1] ?? '').split(',').map(Nu
 ok(initials === 'whoiswritingyou', `cipher spells "${initials}"`);
 ok(groups.reduce((a, b) => a + b, 0) === initials.length, 'decoder groups do not cover the cipher');
 
-// every door opens a room that exists, every internal link lands somewhere
-for (const [, kind] of html.matchAll(/data-explore="(\w+)"/g)) ok(new RegExp(`MODES = \\{[^}]*\\b${kind}\\b`).test(js), `no room called ${kind}`);
+// everything the house can unlock is a page of the book
+for (const [, id] of js.matchAll(/(?:unlock\('|chapter: ')([\w]+)'/g)) ok(html.includes(`id="${id}"`), `unlock('${id}') has no page`);
+for (const id of ['edition', 'introduction', 'ch1', 'ch2', 'ch3', 'ch4', 'ch5', 'ch6', 'ch7', 'ch8', 'ch9', 'ch10', 'ch11', 'letters', 'colophon']) ok(new RegExp(`id="${id}" data-title="`).test(html), `${id} has no data-title`);
 for (const [, id] of html.matchAll(/href="#([\w-]+)"/g)) ok(html.includes(`id="${id}"`), `#${id} has no target`);
 
 if (fail.length) { console.error(fail.join('\n')); process.exit(1); }
