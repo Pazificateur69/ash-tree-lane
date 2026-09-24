@@ -1860,7 +1860,7 @@
     }
 
     // for tests and the curious
-    window.ATL = { P, S, G, stair, stairTo, colliders, statics, baked, sources, pool, regrow: (phase, L) => { buildMaze(phase, L); placeMazePickups(); }, setTile, flushChunks, driftWalls, startCollapse, tileAt, camY: () => camY, yawTo: (dx, dz) => Math.atan2(-dx, -dz), models, fps: () => Math.round(fps), loaded: () => loadDone, teleport(x, z, yaw = P.yaw) { P.x = x; P.z = z; P.yaw = yaw; P.vx = P.vz = 0; }, look(yaw, pitch = 0) { P.yaw = yaw; P.pitch = pitch; }, target: () => target?.userData.id, interact: () => target && interact(target), found, unlock, keys, renderer, scene };
+    window.ATL = { P, S, G, stair, stairTo, colliders, statics, baked, sources, pool, regrow: (phase, L) => { buildMaze(phase, L); placeMazePickups(); }, setTile, flushChunks, driftWalls, startCollapse, tileAt, camY: () => camY, paused: () => game.paused, near: () => pickups.filter(p => Math.hypot(p.position.x - P.x, p.position.z - P.z) < 3).map(p => p.userData.id + '@' + Math.hypot(p.position.x - P.x, p.position.z - P.z).toFixed(2)), yawTo: (dx, dz) => Math.atan2(-dx, -dz), models, fps: () => Math.round(fps), loaded: () => loadDone, teleport(x, z, yaw = P.yaw) { P.x = x; P.z = z; P.yaw = yaw; P.vx = P.vz = 0; }, look(yaw, pitch = 0) { P.yaw = yaw; P.pitch = pitch; }, target: () => target?.userData.id, interact: () => target && interact(target), found, unlock, keys, renderer, scene };
   }
 
   /* ================================================================

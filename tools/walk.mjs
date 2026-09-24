@@ -31,7 +31,7 @@ const shot = async (name, x, z, yaw, pitch = 0, wait = 900) => {
 // pick something up: stand where it can be seen, wait for the prompt, press E, read the page, close the journal
 const take = async (id, x, z, yaw, pitch = -.3) => {
   await ev(([x, z, yaw, pitch]) => { ATL.teleport(x, z, yaw); ATL.look(yaw, pitch); }, [x, z, yaw, pitch]);
-  try { await page.waitForFunction(id => ATL.target() === id, id, { timeout: 15000 }); } catch (e) { check('target ' + id, false, await ev(() => ({ target: ATL.target(), x: ATL.P.x.toFixed(2), z: ATL.P.z.toFixed(2) }))); return false; }
+  try { await page.waitForFunction(id => ATL.target() === id, id, { timeout: 25000 }); } catch (e) { check('target ' + id, false, await ev(() => ({ target: ATL.target(), x: ATL.P.x.toFixed(2), z: ATL.P.z.toFixed(2), yaw: ATL.P.yaw.toFixed(2), camY: ATL.camY().toFixed(2), paused: ATL.paused(), near: ATL.near() }))); return false; }
   await ev(() => ATL.interact());
   await page.waitForTimeout(700);
   const opened = await ev(() => !document.querySelector('#journal').hidden);
@@ -59,10 +59,10 @@ await shot('09-corridor-a', 16, 8.6, E, 0);
 // into the room at its end, facing away from the door: the corridor grows behind you
 const endRoom = await ev(() => ({ x: ATL.G.x0 + (ATL.G.L + 2) * ATL.G.T, z: ATL.G.z0 + 77.5 * ATL.G.T }));
 await ev(([x, z]) => { ATL.teleport(x, z, -Math.PI / 2); ATL.look(-Math.PI / 2, 0); }, [endRoom.x, endRoom.z]);
-await page.waitForTimeout(800);
+await page.waitForFunction(() => ATL.S.grewA, null, { timeout: 15000 }).catch(() => {});
 const grew = await ev(() => ({ grewA: ATL.S.grewA, L: ATL.G.L, x: +ATL.P.x.toFixed(1) }));
 check('Exploration A: the corridor is longer on the way back', grew.grewA && grew.L === 54 && grew.x > endRoom.x + 10, grew);
-await ev(() => ATL.look(Math.PI / 2, 0)); await page.waitForTimeout(700);
+await ev(() => ATL.look(Math.PI / 2, 0)); await page.waitForFunction(() => !ATL.S.turnA, null, { timeout: 15000 }).catch(() => {}); await page.waitForTimeout(400);
 await page.screenshot({ path: OUT + '10-corridor-a-back.png' });
 check('Exploration A: the subtitle', await ev(() => !ATL.S.turnA && /longer than it was/.test(document.querySelector('[data-sub]').textContent)));
 const cam = await ev(() => ({ x: ATL.G.x0 + (ATL.G.L + 3.5) * ATL.G.T, z: ATL.G.z0 + 80.5 * ATL.G.T }));
@@ -75,6 +75,7 @@ await page.waitForTimeout(900);
 check('Holloway\'s corridor once you are home', await ev(() => ATL.G.phase === 'long' && ATL.G.L === 140 && ATL.S.regrow === null), await ev(() => ({ phase: ATL.G.phase, L: ATL.G.L })));
 await shot('11-corridor', 20, 8.6, E, 0);
 await shot('12-corridor-far', 43, 8.6, E, 0, 1200);
+await ev(() => { ATL.teleport(56, 8.6, -Math.PI / 2); }); await page.waitForFunction(() => ATL.G.L === 180, null, { timeout: 15000 }).catch(() => {});
 check('the corridor grows longer at the 40 m beat', await ev(() => ATL.G.L === 180 && ATL.G.hallStart === 184), await ev(() => ({ L: ATL.G.L, hallStart: ATL.G.hallStart })));
 // a wall moves while you are not looking
 const before = await ev(() => { const t = []; for (let i = 4; i < 100; i++) for (const r of [75, 79]) t.push(ATL.tileAt(i, r)); return t.join(''); });
@@ -106,8 +107,9 @@ await ev(() => { ATL.stairTo(22); const a = Math.atan2(ATL.P.z - ATL.G.stair.z, 
 await page.waitForTimeout(600);
 check('Jed\'s landing', await ev(() => ATL.target() === 'jed'), await ev(() => ATL.target()));
 // read Holloway's tape (ch7): the way up stretches, then climbing out tears the house
-await ev(() => { ATL.unlock('ch7', false); ATL.stairTo(10); ATL.stair.lastU = ATL.stair.u + .01; ATL.P.vx = 1; ATL.stair.lastSkip = -100; });
-await page.waitForTimeout(400);
+await ev(() => { ATL.unlock('ch7', false); ATL.stairTo(10); ATL.stair.lastSkip = -100; const a = Math.atan2(ATL.P.z - ATL.G.stair.z, ATL.P.x - ATL.G.stair.x); ATL.look(ATL.yawTo(Math.sin(a), -Math.cos(a)), .2); ATL.keys.add('f'); }); // up the helix: the angle decreases
+await page.waitForFunction(() => ATL.stair.stretched >= 1, null, { timeout: 30000 }).catch(() => {});
+await ev(() => ATL.keys.delete('f'));
 check('the staircase stretches under you', await ev(() => ATL.stair.stretched >= 1 && ATL.stair.depth() > 10.5), await ev(() => ({ stretched: ATL.stair.stretched, depth: ATL.stair.depth().toFixed(1) })));
 await ev(() => { ATL.stairTo(0); ATL.look(ATL.yawTo(-1, 0), 0); ATL.keys.add('f'); });
 await page.waitForFunction(() => !ATL.stair.active, null, { timeout: 60000 });
