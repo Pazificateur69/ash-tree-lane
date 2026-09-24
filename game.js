@@ -1391,7 +1391,7 @@
     }
     function tearHouse(silent) {
       if (S.torn) return; S.torn = true;
-      if (G.built && G.phase !== 'short') { buildMaze('short'); placeMazePickups(); }
+      if (G.built && (G.phase === 'long' || G.phase === 'a')) { buildMaze('short'); placeMazePickups(); } // a house reopened later keeps its later hallway
       const rand = rng(41);
       for (const w of houseWalls) {
         if (w.tag === 'plug' || w.tag === 'lintel' || w.tag === 'sill') continue;
