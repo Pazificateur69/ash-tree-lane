@@ -869,7 +869,7 @@
     const ground = shadowed(new THREE.Mesh(groundGeo, M.ground), false, true);
     ground.rotation.x = -Math.PI / 2; ground.position.set(0, -.03, 0); scene.add(ground);
     const brickBase = new THREE.Mesh(new THREE.BoxGeometry(14.4, .6, 13.4), M.brick); brickBase.position.set(7, -.315, 6.5); scene.add(brickBase); stat(brickBase); // its top sits just under the floorboards
-    const porch = box(2.4, .16, 1.2, M.brick, 2.5, .08, 13.7); block(2.5, 13.7, 2.4, 1.2);
+    const porch = box(2.4, .16, 1.2, M.brick, 2.5, .08, 13.7); // a step, not a wall: the way out once the door opens
     const treeRand = rng(5);
     for (let i = 0; i < 14; i++) {
       const a = treeRand() * Math.PI * 2, r = 13 + treeRand() * 22;

@@ -104,7 +104,7 @@ await page.waitForTimeout(900);
 await page.screenshot({ path: OUT + '15-stairs.png' });
 console.log('stair', await ev(() => ({ active: ATL.stair.active, depth: ATL.stair.depth().toFixed(1), target: ATL.target() })));
 await ev(() => { ATL.stairTo(22); const a = Math.atan2(ATL.P.z - ATL.G.stair.z, ATL.P.x - ATL.G.stair.x); ATL.look(ATL.yawTo(-Math.sin(a), Math.cos(a)), -.5); });
-await page.waitForTimeout(600);
+await page.waitForFunction(() => ATL.target() === 'jed', null, { timeout: 15000 }).catch(() => {});
 check('Jed\'s landing', await ev(() => ATL.target() === 'jed'), await ev(() => ATL.target()));
 // read Holloway's tape (ch7): the way up stretches, then climbing out tears the house
 await ev(() => { ATL.unlock('ch7', false); ATL.stairTo(10); ATL.stair.lastSkip = -100; const a = Math.atan2(ATL.P.z - ATL.G.stair.z, ATL.P.x - ATL.G.stair.x); ATL.look(ATL.yawTo(Math.sin(a), -Math.cos(a)), .2); ATL.keys.add('f'); }); // up the helix: the angle decreases
