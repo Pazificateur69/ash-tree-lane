@@ -6,9 +6,11 @@ const STATES = {
   fresh: ['edition', 'colophon'],
   closet: ['edition', 'colophon', 'ch1', 'ch2'],
   hallway: ['edition', 'colophon', 'ch1', 'ch2', 'ch3', 'karen', 'samples'],
-  torn: ['edition', 'colophon', 'ch1', 'ch2', 'ch3', 'tom', 'ch7'],
-  explore5: ['edition', 'colophon', 'ch1', 'ch2', 'ch3', 'ch4', 'ch5', 'ch6', 'ch7', 'ch8', 'ch9'],
-  ended: ['edition', 'colophon', 'ch1', 'ch2', 'ch3', 'ch7', 'ch8', 'ch9', 'ch10', 'ch11', 'letters', 'exhibits', 'index'],
+  holloway: ['edition', 'colophon', 'ch1', 'ch2', 'ch3', 'explA', 'karen', 'samples', 'ch4'],
+  torn: ['edition', 'colophon', 'ch1', 'ch2', 'ch3', 'explA', 'tom', 'ch7'],
+  collapsed: ['edition', 'colophon', 'ch1', 'ch2', 'ch3', 'explA', 'tom', 'ch7', 'rescue', 'collapse'],
+  explore5: ['edition', 'colophon', 'ch1', 'ch2', 'ch3', 'explA', 'ch4', 'ch5', 'ch6', 'ch7', 'rescue', 'collapse', 'ch8', 'ch9'],
+  ended: ['edition', 'colophon', 'ch1', 'ch2', 'ch3', 'explA', 'ch7', 'rescue', 'collapse', 'ch8', 'ch9', 'ch10', 'ch11', 'letters', 'exhibits', 'index'],
 };
 let failed = 0;
 for (const [name, found] of Object.entries(STATES)) {
@@ -26,8 +28,9 @@ for (const [name, found] of Object.entries(STATES)) {
     if (!ended) await page.waitForFunction(() => document.querySelector('[data-rec]').textContent !== '00:00:00', null, { timeout: 60000 }).catch(() => {});
     else await page.waitForTimeout(1500);
     const rec = await page.evaluate(() => document.querySelector('[data-rec]').textContent);
-    const state = await page.evaluate(() => ({ torn: ATL.S.torn, hallway: ATL.S.hallway, closet: ATL.S.closet, built: ATL.G.built, short: ATL.G.short, found: ATL.found.size }));
-    ok = errors.length === 0 && (ended || rec !== '00:00:00') && state.closet === found.includes('ch2') && state.hallway === found.includes('ch3') && state.torn === found.includes('ch7');
+    const state = await page.evaluate(() => ({ torn: ATL.S.torn, hallway: ATL.S.hallway, closet: ATL.S.closet, built: ATL.G.built, phase: ATL.G.phase, collapsed: ATL.S.collapsed, doorAjar: ATL.S.doorAjar, found: ATL.found.size }));
+    const phase = found.includes('ch9') ? 'empty' : found.includes('ch7') ? 'short' : found.includes('explA') ? 'long' : found.includes('ch3') ? 'a' : null;
+    ok = errors.length === 0 && (ended || rec !== '00:00:00') && state.closet === found.includes('ch2') && state.hallway === found.includes('ch3') && state.torn === found.includes('ch7') && state.phase === phase && state.collapsed === found.includes('rescue') && state.doorAjar === found.includes('rescue');
     console.log((ok ? 'PASS' : 'FAIL').padEnd(5), name.padEnd(9), 'rec', rec, JSON.stringify(state), errors.length ? 'errors: ' + errors.join(' | ') : '');
   } catch (e) { console.log('FAIL', name, e.message.split('\n')[0], errors.join(' | ')); }
   if (!ok) failed++;

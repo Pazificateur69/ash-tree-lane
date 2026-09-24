@@ -38,20 +38,23 @@ Headphones are worth it. The drone, the growl and the burning pages are synthesi
 
 1. **The house.** Foyer, kitchen, living room, two bedrooms, the yard under the stars through the windows. A trunk that is not theirs holds the story of how the papers were found. Tapes, a tape measure, a photograph face down and a specimen bag hold the first chapters: the move, the quarter of an inch, the hallway, Karen, and what the laboratory made of the walls.
 2. **A quarter of an inch.** Read the measurements and a door appears between the bedrooms. Behind it, a closet that was never there, and a tape labeled 5½.
-3. **The hallway.** The living room's east wall opens onto ash-gray corridors, colder than the season, longer than the house is wide. Fishing line is tied off at the frame. Rooms off the corridor hold Zampanò's page on echoes and the explorers' cache.
-4. **The Great Hall and the staircase.** Your light goes out into the hall and does not come back. Far off, at floor level, a light someone else left burning: Tom's lantern, his chair, his recorder and his jokes at the lip of the well, next to a hand-drawn map that stops at the stairs. Going down, you find what the fourth exploration left behind.
-5. **The house has moved.** Coming back up, the corridor is shorter than it was. The house leans, the floor has opened, the lamps are dead and the television is showing static. Tom's radio, Karen's tapes and the rig he built for the wounded are what is left.
-6. **Exploration #5.** Through the doorway one last time, into a dark with no dimensions, with a book and something to light it with. Then a light that is not yours.
-7. **Vermont**, and at the back of the journal, the letters, the exhibits and the index.
+3. **Exploration A.** The living room's east wall opens onto an ash-gray corridor, colder than the season. Fishing line is tied off at the frame. Forty feet in, a room with two dark mouths, and Navidson's Hi8 on the floor where he set it down. Turn round: the corridor is longer than it was.
+4. **Holloway's corridor.** Once the tape is read, the hallway is his: rooms off the corridor (never the same rooms twice), Zampanò's page on echoes, the explorers' cache, a stretch where the walls go up out of the light, and an anteroom with a doorway on every side. Doorways you passed are gone when you look back. Walls you passed have doorways. At the forty-metre mark the Hall recedes and the corridor is longer than it was.
+5. **The Great Hall and the staircase.** Your light goes out into the hall and does not come back. Far off, at floor level, a light someone else left burning: Tom's lantern, his chair, his recorder and his jokes at the lip of the well, next to a hand-drawn map that stops at the stairs, and a quarter to drop into the well and listen to. Going down, you find what the fourth exploration left behind: the shredded markers, the landing where Jed kept Wax alive, Holloway's camera. Coming back up with his tape read, the staircase adds to itself under you.
+6. **The house has moved.** Stepping off the top tread tears the house: the corridor is shorter than it was, the house leans, the floor has opened, the lamps are dead and the television is showing static. Tom's rig for the wounded is at the lip of the well.
+7. **The house closes.** Read the rescue and go home: the walls lean in, the ceiling comes down, doors slam, the lamps go one by one, and the front door opens outward for the first time. Get out. Tom does not.
+8. **What the house took.** Tom's radio and Karen's tapes are what is left. She leaves with the children.
+9. **Exploration #5.** The hallway has nothing in it now: no rooms, no line, walls that draw apart as you go, a ceiling that is gone, a passage that narrows until you are on your hands and knees past the bicycle he left, and then no floor. A dark with no dimensions, a book, and something to light it with. Then a light that is not yours.
+10. **Vermont**, and at the back of the journal, the letters, the exhibits and the index.
 
 ## The journal
 
-The journal is the book side of the project: a retelling of the novel in new words, in the novel's structure. Sixteen chapters, an introduction, thirty-three notes, the Whalestoe letters, an appendix of exhibits and contrary evidence, and an index.
+The journal is the book side of the project: a retelling of the novel in new words, in the novel's structure. Eighteen chapters, an introduction, thirty-seven notes, the Whalestoe letters, an appendix of exhibits and contrary evidence, and an index.
 
 - **Four voices, four typefaces**, as in the book: Zampanò's study of *The Navidson Record* in Times, Johnny Truant's interruptions in Courier, the Editors in Bookman, and Pelafina's letters in Goudy.
 - **house** is blue wherever it appears, in any language. The struck-through passages about the minotaur are red.
-- **Thirty-three notes** open as sheets of paper stacked over the text. Some notes open other notes.
-- The pages do what the book's pages do: echoes fade across the page, a list has a back you can turn, a passage is printed upside down, a column narrows as the expedition goes wrong, the text of chapter XIII tears apart as you scroll, a film is shown frame by frame.
+- **Thirty-seven notes** open as sheets of paper stacked over the text. Some notes open other notes.
+- The pages do what the book's pages do: echoes fade across the page, a list has a back you can turn, a passage is printed upside down, a column narrows as the expedition goes wrong, the text of chapter XV tears apart as you scroll, a film is shown frame by frame.
 - Pelafina's second letter carries a message in the first letters of its words. There is a button to read it, and you can also just look.
 - The exhibits are all missing, and say so. The index gives heights in pixels instead of page numbers, and marks with DNE the things the house does not contain.
 - Chapter II measures itself. So does the title page, and the difference grows a sixteenth of a pixel every time you come back.
@@ -74,6 +77,7 @@ The journal is the book side of the project: a retelling of the novel in new wor
 - The house is a list of walls with door and window gaps; walls pivot at their base so the house can lean later.
 - The hallway is a tile maze generated from a seed: a corridor 70 m long with rooms off it, then a Great Hall 60 m across. When the house "moves", it is regenerated shorter around the same staircase.
 - The staircase is a helix of wedge-shaped steps walked freely around its column; only the 224 steps nearest to you (80 above, 144 below) exist at any moment, and the well in the Hall floor is a real hole.
+- The hallway is a grid of tiles built in blocks so the frustum can cull it and a block can be rebuilt on its own. It has phases, like the film's explorations: Exploration A's dead end that grows behind you (the room you stand in is rebuilt farther from the door, and you with it), Holloway's corridor with rooms seeded by the visit, the short corridor of the torn house, and the empty width of Exploration #5. Doorways behind you close and walls open while you face the other way; the stretch without a ceiling uses forty-metre tiles; the crawlspace lowers the ceiling and your eyes. When the house closes, its walls come out of the baked mesh, lean for thirty seconds, and go back in.
 - Sound is Web Audio: the recordings above, brown noise through filters for the drone and the growl, high-passed noise for the burning pages, and a convolution reverb whose room gets longer the deeper you go.
 - The last exploration is not 3D at all: a page of paper in the DOM, burned with a CSS mask.
 

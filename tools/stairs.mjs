@@ -13,8 +13,8 @@ await page.evaluate(() => { localStorage.clear(); localStorage.setItem('atl:low'
 await page.reload({ waitUntil: 'load' });
 await page.click('#enter');
 await page.waitForFunction(() => window.ATL && window.ATL.loaded(), null, { timeout: 120000 });
-await page.evaluate(() => { document.querySelector('[data-card]').hidden = true; ATL.unlock('ch1', false); ATL.unlock('ch2', false); ATL.unlock('ch3', false); });
-await page.waitForTimeout(800);
+await page.evaluate(() => { document.querySelector('[data-card]').hidden = true; ATL.unlock('ch1', false); ATL.unlock('ch2', false); ATL.unlock('ch3', false); ATL.unlock('explA', false); ATL.teleport(3, 12, 0); }); // Holloway's corridor, with the Hall at its end
+await page.waitForFunction(() => ATL.G.phase === 'long', null, { timeout: 20000 });
 const G = await page.evaluate(() => ({ x: ATL.G.stair.x, z: ATL.G.stair.z }));
 const shot = async (name, wait = 900) => { await page.waitForTimeout(wait); await page.screenshot({ path: OUT + name + '.png' }); console.log(name, await page.evaluate(() => ({ active: ATL.stair.active, u: ATL.stair.u.toFixed(2), depth: ATL.stair.depth().toFixed(2), x: ATL.P.x.toFixed(2), z: ATL.P.z.toFixed(2), target: ATL.target() }))); };
 // from the lip, looking at the top step and down the well

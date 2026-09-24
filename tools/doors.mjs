@@ -54,7 +54,7 @@ check('torn: teleport into the house stays there', ...(r => [r.x < 13.5, r])(awa
 const lean = await page.evaluate(() => { let leaning = 0, stale = 0; for (const m of ATL.statics) { if (!m.rotation || (!m.rotation.z && !m.rotation.x)) continue; leaning++; const e = new (m.matrix.constructor)().compose(m.position, m.quaternion, m.scale); if (!m.matrix.equals(e)) stale++; } return { leaning, stale }; });
 check('torn: leaning walls carry their lean into the bake', lean.stale === 0 && lean.leaning > 0, lean);
 // a finished house, reopened
-await page.evaluate(() => localStorage.setItem('atl:found', JSON.stringify(['edition', 'introduction', 'ch1', 'ch2', 'ch3', 'karen', 'explorations', 'ch4', 'ch5', 'samples', 'ch6', 'tom', 'ch7', 'rescue', 'ch8', 'ch9', 'ch10', 'ch11', 'letters', 'exhibits', 'index', 'colophon'])));
+await page.evaluate(() => localStorage.setItem('atl:found', JSON.stringify(['edition', 'introduction', 'ch1', 'ch2', 'ch3', 'explA', 'karen', 'explorations', 'ch4', 'ch5', 'samples', 'ch6', 'tom', 'ch7', 'rescue', 'collapse', 'ch8', 'ch9', 'ch10', 'ch11', 'letters', 'exhibits', 'index', 'colophon'])));
 await page.reload({ waitUntil: 'load' });
 await page.click('#enter');
 await page.waitForFunction(() => window.ATL && window.ATL.loaded(), null, { timeout: 180000 });

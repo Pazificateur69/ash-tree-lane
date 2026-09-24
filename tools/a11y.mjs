@@ -13,7 +13,7 @@ const URL = 'http://127.0.0.1:8123/index.html?t=' + Date.now();
   const page = await ctx.newPage();
   await page.goto(URL, { waitUntil: 'load' });
   const r = await page.evaluate(() => { const b = document.querySelector('#book'); const cs = getComputedStyle(b); return { display: cs.display, sections: b.querySelectorAll(':scope > section[data-title]').length, notesInline: getComputedStyle(b.querySelector('aside.note')).display, js: document.documentElement.classList.contains('js') }; });
-  check('no script: the book is readable on the page', r.display !== 'none' && r.sections === 22 && r.notesInline !== 'none' && !r.js, r);
+  check('no script: the book is readable on the page', r.display !== 'none' && r.sections === 24 && r.notesInline !== 'none' && !r.js, r);
   await browser.close();
 }
 // 2. with script: the book is out of the page, the journal and leaves are modal, focus comes back
