@@ -1726,7 +1726,7 @@
       if (stair.active) { // the eye follows the gait: level on the tread, then down over the edge
         const f = stair.f, target = reduced ? 1.6 - stair.u / STEP_A * RISE : 1.6 - (stair.k + THREE.MathUtils.smoothstep(f, .55, 1)) * RISE - .02 * Math.sin(Math.PI * f);
         camY += (target - camY) * (1 - Math.exp(-dt * (reduced ? 6 : 22)));
-      } else { const crawl = G.low && P.x > G.x0 + G.low[0] * G.T && P.x < G.x0 + G.low[1] * G.T; camY += ((crawl ? .95 : 1.6) - camY) * (1 - Math.exp(-dt * (crawl ? 4 : 14))); }
+      } else { const crawl = !!(G.low && P.x > G.x0 + G.low[0] * G.T && P.x < G.x0 + G.low[1] * G.T); P.crawl = crawl; camY += ((crawl ? .95 : 1.6) - camY) * (1 - Math.exp(-dt * (crawl ? 4 : 14))); }
 
       // footsteps
       const reg = region();
@@ -1824,7 +1824,7 @@
       camera.rotation.x = P.pitch + (Math.sin(t * .83 + 1) * .6 + Math.sin(t * 2.1) * .4) * sway;
       camera.rotation.z = (reduced ? 0 : Math.sin(bobPhase * .5) * .004 * (moving ? 1 : 0)) + Math.sin(t * .47) * sway * .5;
       if (shake > 0 && !reduced) { camera.position.x += (Math.random() - .5) * .02 * shake; camera.position.y += (Math.random() - .5) * .02 * shake; shake = Math.max(0, shake - dt * .6); }
-      const bright = reg === 'house' && !S.torn ? .8 : 1;
+      const bright = (reg === 'house' && !S.torn ? .8 : 1) * (P.crawl ? .3 : 1); // in the crawlspace the walls are at your elbows
       const irisTarget = clamp(viewDistance() / 4.5, .3, 1);
       iris += (irisTarget - iris) * (1 - Math.exp(-dt * 3));
       torchDip = Math.max(0, torchDip - dt * 1.4);
