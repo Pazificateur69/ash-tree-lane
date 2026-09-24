@@ -71,7 +71,7 @@ function ATL_YAW(x0, z0, x1, z1) { return Math.atan2(-(x1 - x0), -(z1 - z0)); }
 check('Exploration A: read', await ev(() => ATL.found.has('explA') && ATL.S.regrow === 'long'), await ev(() => ({ regrow: ATL.S.regrow })));
 // back in the house, the hallway becomes Holloway's
 await ev(() => { ATL.teleport(12.2, 8.5, -Math.PI / 2); });
-await page.waitForTimeout(900);
+await page.waitForFunction(() => ATL.G.phase === 'long', null, { timeout: 15000 }).catch(() => {});
 check('Holloway\'s corridor once you are home', await ev(() => ATL.G.phase === 'long' && ATL.G.L === 140 && ATL.S.regrow === null), await ev(() => ({ phase: ATL.G.phase, L: ATL.G.L })));
 await shot('11-corridor', 20, 8.6, E, 0);
 await shot('12-corridor-far', 43, 8.6, E, 0, 1200);
@@ -93,7 +93,7 @@ await page.waitForTimeout(1200);
 await page.screenshot({ path: OUT + '13c-relay-out.png' });
 check('the map', await take('map', G.x - 4.8, G.z - 1.2, ATL_YAW(G.x - 4.8, G.z - 1.2, G.x - 4.8, G.z - 2.4)));
 check('the quarter', await take('quarter', G.x - 3.1 - 1.7, G.z + 1.7, ATL_YAW(G.x - 4.8, G.z + 1.7, G.x - 3.7, G.z + 1.7)));
-await page.waitForTimeout(1500);
+await page.waitForFunction(() => /falling for/.test(document.querySelector('[data-meter]').textContent), null, { timeout: 15000 }).catch(() => {});
 check('the quarter falls', await ev(() => ATL.S.quarterAt > 0 && /falling for/.test(document.querySelector('[data-meter]').textContent)), await ev(() => document.querySelector('[data-meter]').textContent));
 await shot('14-well', G.x - 4.2, G.z, -Math.PI / 2, -.35);
 // onto the top step from the lip, then down the helix to the markers
@@ -122,7 +122,7 @@ await shot('16-torn-living', 8.2, 11.5, -Math.PI / 2 + .4, .05, 1200);
 check('the rig', await take('rig', G.x + 3.7, G.z + 2.2, 0, -.3));
 check('the collapse waits for you at home', await ev(() => ATL.S.collapsePending));
 await ev(() => { ATL.teleport(12.2, 8.5, Math.PI / 2); ATL.look(Math.PI / 2, 0); });
-await page.waitForTimeout(3500);
+await page.waitForFunction(() => ATL.S.collapseT > 0, null, { timeout: 20000 }).catch(() => {});
 check('the house is closing', await ev(() => ATL.S.collapseT > 0 && ATL.S.doorOpen), await ev(() => ({ t: ATL.S.collapseT.toFixed(1), meter: document.querySelector('[data-meter]').textContent })));
 await shot('17-collapse', 8.2, 11.5, -Math.PI / 2 + .4, .05, 1500);
 check('the front door opens', await take('front_door', 2.5, 12.0, Math.PI, .05));
@@ -135,13 +135,13 @@ check('the house stops', await ev(() => ATL.S.collapsed && ATL.S.collapseT < 0))
 await shot('18-yard', 2.5, 17, 0, .1, 1500);
 // what the house took, what some have thought: the radio and the tapes, then the empty hallway
 await ev(() => { ATL.unlock('collapse', false); ATL.unlock('ch8', false); ATL.unlock('ch9', false); ATL.teleport(4, 2.5, 0); });
-await page.waitForTimeout(900);
+await page.waitForFunction(() => ATL.G.phase === 'empty', null, { timeout: 20000 }).catch(() => {});
 check('the hallway is empty for Exploration #5', await ev(() => ATL.G.phase === 'empty' && ATL.S.regrow === null), await ev(() => ({ phase: ATL.G.phase })));
 await shot('19-empty', 40, 8.6, E, .2, 1200);
 const low = await ev(() => ({ x0: ATL.G.x0, low: ATL.G.low, T: ATL.G.T }));
 await shot('20-bicycle', low.x0 + (low.low[0] - 6) * low.T, 8.6, E - .35, -.3, 1200);
 await ev(([x]) => { ATL.teleport(x, 8.75, -Math.PI / 2); ATL.look(-Math.PI / 2, 0); }, [low.x0 + (low.low[0] + 8) * low.T]);
-await page.waitForTimeout(1500);
+await page.waitForFunction(() => ATL.camY() < 1.2, null, { timeout: 20000 }).catch(() => {});
 check('on your hands and knees in the crawlspace', await ev(() => ATL.camY() < 1.2 && ATL.target() !== 'bicycle'), await ev(() => ({ camY: ATL.camY().toFixed(2) })));
 await page.screenshot({ path: OUT + '20b-crawl.png' });
 await ev(() => { ATL.teleport(ATL.G.x0 + 74, 8.6, -Math.PI / 2); ATL.keys.add('f'); });
