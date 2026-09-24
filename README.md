@@ -81,7 +81,7 @@ The journal is the book side of the project: a retelling of the novel in new wor
 
 **Accessibility.** Everything can be played from the keyboard. The journal is plain HTML and works with a screen reader; the house does not, which is why *or just read* exists. `prefers-reduced-motion` turns off the head bob, the flicker, the shaking and most of the grain.
 
-**Testing.** `node check.mjs` verifies the things that break silently when the text is edited: note numbers in order, every reference has its note, the cipher still spells its sentence, every page is in the journal's order, every texture and model the script asks for exists, and no em dashes anywhere. `node tools/walk.mjs` plays the whole walk (every room, the hallway, the Hall, the stairs, the torn house, the last pages, the ending) in headless Chromium and screenshots each scene; `node tools/resume.mjs` opens the house with saved progress at every stage of the story and checks that it comes back as it was; `node tools/stairs.mjs` walks the staircase; `node tools/doors.mjs` walks through every door that once stuck and reopens a finished house.
+**Testing.** `node check.mjs` verifies the things that break silently when the text is edited: note numbers in order, every reference has its note, the cipher still spells its sentence, every page is in the journal's order, every texture and model the script asks for exists, and no em dashes anywhere. `node tools/walk.mjs` plays the whole walk (every room, the hallway, the Hall, the stairs, the torn house, the last pages, the ending) in headless Chromium and screenshots each scene; `node tools/resume.mjs` opens the house with saved progress at every stage of the story and checks that it comes back as it was; `node tools/stairs.mjs` walks the staircase; `node tools/doors.mjs` walks through every door that once stuck and reopens a finished house. `node tools/a11y.mjs` checks that the book reads without script, that the journal and its leaves are modal, that the arrows turn, and that a browser without WebGL is sent back to the threshold.
 
 **Tools.** Written and built with the help of Claude (Anthropic), used as a coding and writing partner; every scene was checked by hand.
 
@@ -104,6 +104,7 @@ tools/walk.mjs      the headless walkthrough (playwright-core)
 tools/resume.mjs    reopens a saved house at every stage of the story
 tools/stairs.mjs    walks onto, down and off the staircase, with a regression for the descent
 tools/doors.mjs     walks through every door that once stuck, and reopens a finished house
+tools/a11y.mjs      the book without script, modal journal and leaves, keyboard turning, no WebGL
 og.jpg              link preview, a still from the living room
 ```
 
