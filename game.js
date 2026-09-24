@@ -82,7 +82,7 @@
      ================================================================ */
 
   const BOOK = $('#book'); BOOK.remove(); // the book is in the page for readers without script; with script it is read from here
-  const ORDER = ['edition', 'introduction', 'ch1', 'ch2', 'ch3', 'karen', 'explorations', 'ch4', 'ch5', 'samples', 'ch6', 'tom', 'ch7', 'rescue', 'ch8', 'ch9', 'ch10', 'ch11', 'letters', 'exhibits', 'index', 'colophon'];
+  const ORDER = ['edition', 'introduction', 'ch1', 'ch2', 'ch3', 'explA', 'karen', 'explorations', 'ch4', 'ch5', 'samples', 'ch6', 'tom', 'ch7', 'rescue', 'collapse', 'ch8', 'ch9', 'ch10', 'ch11', 'letters', 'exhibits', 'index', 'colophon'];
   const FREE = ['edition', 'colophon'];
   const TITLES = Object.fromEntries(ORDER.map(id => [id, BOOK.querySelector('#' + id).dataset.title]));
   const savedFound = store.get('found', FREE);
@@ -231,7 +231,7 @@
     btn.textContent = on ? 'Read the whole words' : 'Read the first letters';
   }
 
-  /* torn text in chapter XIII, prepared once in the template */
+  /* torn text in chapter XV, prepared once in the book */
   $$('.torn p', BOOK).forEach((p, pi) => {
     const rand = rng(97 + pi * 13);
     const words = p.textContent.trim().split(/\s+/);
@@ -427,6 +427,17 @@
         o.connect(g).connect(this.bus); o.start(at); o.stop(at + .8);
       }
     },
+    coin() { // a quarter dropped down the well: it rings on a step, and again, fainter, and again, and never lands
+      if (!this.ctx) return;
+      const c = this.ctx; let at = c.currentTime + .25, gap = .35, level = .5;
+      for (let k = 0; k < 18; k++) {
+        const o = c.createOscillator(), g = c.createGain();
+        o.type = 'sine'; o.frequency.value = 3100 + (k % 3) * 380 - k * 25;
+        g.gain.setValueAtTime(0, at); g.gain.linearRampToValueAtTime(level, at + .004); g.gain.setTargetAtTime(0, at + .02, .06 + k * .012);
+        o.connect(g).connect(this.bus); o.start(at); o.stop(at + 1.5);
+        at += gap; gap *= 1.22; level *= .84;
+      }
+    },
     click() {
       if (!this.ctx) return;
       const c = this.ctx, t = c.currentTime, s = this.noise(), f = c.createBiquadFilter(), g = c.createGain();
@@ -551,11 +562,21 @@
     [16, 'It is cold the way a cellar is cold, with no season in it.'],
     [22, 'The line runs on ahead of you, farther than a spool should go.'],
     [30, 'Your light goes forward and does not arrive anywhere.'],
-    [40, 'You have walked farther than the house is wide.'],
+    [40, 'You have walked farther than the house is wide.', 'longer'],
     [48, 'Something, very far off, shifts its weight.', 'growl'],
     [58, 'The line on the spool is thinner than it was.'],
     [66, 'The dark ahead is the same as the dark behind.'],
     [74, 'A light, far off, at the level of the floor. Someone left it burning, and it has not moved for days.']
+  ];
+  const EMPTY_BEATS = [ // Exploration #5: the hallway with nothing in it
+    [2, 'He rode in on a bicycle, with food and water for weeks.'],
+    [12, 'No rooms. No line. Nothing to tie one to.'],
+    [26, 'The walls are farther apart than they were.'],
+    [36, 'The ceiling is gone. The walls go up, and the light does not follow them.'],
+    [50, 'Nothing has been this far. Not Holloway. Not the line.'],
+    [54, 'The passage narrows. It goes on on its hands and knees, and so will you.'],
+    [64, 'The floor is thinner than it looks.'],
+    [70, 'Ahead of you, nothing. Under you, less.']
   ];
   const STAIR_BEATS = [
     [1, 'They counted the steps. Then they stopped counting.'],
@@ -751,7 +772,7 @@
       return g;
     }
 
-    const G = { x0: 14, z0: -30, W: 270, D: 160, T: .5, tiles: null, hallStart: 144, hallJ0: 10, hallJ1: 150, stair: { i: 204, j: 80 }, meshes: [], floor: null, ceiling: null, built: false, short: false };
+    const G = { x0: 14, z0: -30, W: 270, D: 160, T: .5, tiles: null, hallStart: 144, hallJ0: 10, hallJ1: 150, stair: { i: 204, j: 80 }, meshes: [], chunks: new Map(), floor: null, ceiling: null, built: false, short: false, phase: null, tall: null, L: 0 };
     G.stair.x = G.x0 + (G.stair.i + .5) * G.T; G.stair.z = G.z0 + (G.stair.j + .5) * G.T;
     const STEP_A = Math.PI * 2 / 16, RISE = .19, N_STEPS = 224, N_ABOVE = 80, R_IN = .58, R_OUT = 2.95, WELL = 3.1, HALF_STEP = STEP_A * .54;
     let camY = 1.6;
@@ -1015,62 +1036,107 @@
     /* ---------- the hallway that should not be there ---------- */
 
     const tileAt = (i, j) => (i < 0 || j < 0 || i >= G.W || j >= G.D) ? 1 : G.tiles[i + j * G.W];
-    function genMaze(short) {
+    // the hallway has phases, like the film's explorations: a short dead end (Exploration A), Holloway's long corridor with its rooms,
+    // the corridor the house shortened when it tore, and the empty width Navidson rode into alone
+    function genMaze(phase, L) {
       const { W, D } = G; const t = G.tiles = new Uint8Array(W * D).fill(1);
       const carve = (i0, i1, j0, j1) => { for (let j = Math.max(0, j0); j <= Math.min(D - 1, j1); j++) for (let i = Math.max(0, i0); i <= Math.min(W - 1, i1); i++) t[i + j * W] = 0; };
-      const L = short ? 16 : 140;
-      G.hallStart = L + 4;
-      carve(0, G.hallStart + 2, 76, 78);
-      if (!short) {
-        const rand = rng(1331 + visits);
-        for (let i = 12; i < L - 12;) {
-          const side = rand() < .5 ? -1 : 1, w = 6 + Math.floor(rand() * 18), d = 6 + Math.floor(rand() * 22);
-          if (side < 0) { carve(i, i + 1, 75, 75); carve(i - (w >> 1), i + (w >> 1), 75 - d, 74); if (rand() < .5) { carve(i, i + 1, 74 - d, 74 - d); carve(i - 4, i + 6, 74 - d - 8 - Math.floor(rand() * 10), 75 - d - 1); } }
-          else { carve(i, i + 1, 79, 79); carve(i - (w >> 1), i + (w >> 1), 80, 80 + d); if (rand() < .5) { carve(i, i + 1, 81 + d, 81 + d); carve(i - 4, i + 6, 82 + d, 82 + d + 8 + Math.floor(rand() * 10)); } }
-          i += 12 + Math.floor(rand() * 14);
+      G.phase = phase; G.short = phase === 'short'; G.tall = null; G.ante = null; G.low = null;
+      if (phase === 'a') { // a corridor that ends in a room with two dark mouths, and a stub that stops
+        L = L || 24; G.hallStart = 9999;
+        carve(0, L, 76, 78);
+        carve(L - 1, L + 7, 71, 83);
+        carve(L + 8, L + 9, 76, 78); carve(L + 10, L + 15, 75, 79);
+        carve(L + 1, L + 3, 62, 70); carve(L + 3, L + 5, 84, 92);
+      } else if (phase === 'empty') { // nothing but corridor, wider as it goes, and from a certain point no ceiling at all
+        L = W - 3; G.hallStart = 9999;
+        for (let i = 0; i < W - 3; i++) { const half = i >= 108 && i < 126 ? 0 : 1 + Math.floor(Math.max(0, i - 60) / 26); carve(i, i, 77 - half, 77 + half); }
+        G.tall = [70, 108]; G.low = [108, 126]; // the ceiling goes, then the passage narrows to a crawl, then it opens out again
+      } else {
+        L = L || (phase === 'short' ? 16 : 140);
+        G.hallStart = L + 4;
+        carve(0, G.hallStart + 2, 76, 78);
+        if (phase === 'long') {
+          const rand = rng(1331 + visits); // the rooms are never twice the same between two visits, and the same within one, however long the corridor grows
+          for (let i = 12; i < L - 12;) {
+            const side = rand() < .5 ? -1 : 1, w = 6 + Math.floor(rand() * 18), d = 6 + Math.floor(rand() * 22);
+            if (side < 0) { carve(i, i + 1, 75, 75); carve(i - (w >> 1), i + (w >> 1), 75 - d, 74); if (rand() < .5) { carve(i, i + 1, 74 - d, 74 - d); carve(i - 4, i + 6, 74 - d - 8 - Math.floor(rand() * 10), 75 - d - 1); } }
+            else { carve(i, i + 1, 79, 79); carve(i - (w >> 1), i + (w >> 1), 80, 80 + d); if (rand() < .5) { carve(i, i + 1, 81 + d, 81 + d); carve(i - 4, i + 6, 82 + d, 82 + d + 8 + Math.floor(rand() * 10)); } }
+            i += 12 + Math.floor(rand() * 14);
+          }
+          G.tall = [100, 116]; // a stretch where the light goes up and does not arrive anywhere
+          carve(L - 16, L - 4, 67, 87); carve(L - 11, L - 9, 58, 66); carve(L - 11, L - 9, 88, 96); // the anteroom, with a mouth on every side
+          G.ante = [L - 16, L - 4];
         }
+        carve(G.hallStart, W - 3, G.hallJ0, G.hallJ1);
+        for (let j = G.stair.j - 6; j <= G.stair.j + 6; j++) for (let i = G.stair.i - 6; i <= G.stair.i + 6; i++) if ((i - G.stair.i) ** 2 + (j - G.stair.j) ** 2 <= 30) t[i + j * W] = 2;
       }
-      carve(G.hallStart, W - 3, G.hallJ0, G.hallJ1);
-      for (let j = G.stair.j - 6; j <= G.stair.j + 6; j++) for (let i = G.stair.i - 6; i <= G.stair.i + 6; i++) if ((i - G.stair.i) ** 2 + (j - G.stair.j) ** 2 <= 30) t[i + j * W] = 2;
+      G.L = L;
     }
     let hallLid = null;
     const mazeTileGeo = new THREE.BoxGeometry(.5, 2.6, .5);
-    function buildMaze(short) {
-      for (const m of G.meshes) { scene.remove(m); m.dispose(); }
-      G.meshes = [];
-      if (G.floor) { scene.remove(G.floor, G.ceiling); G.floor.geometry.dispose(); G.ceiling.geometry.dispose(); }
-      genMaze(short);
-      G.short = short;
-      const { W, D, T, x0, z0 } = G;
-      // only the tiles that face an open cell are built, in chunks of 24 x 24 tiles so the frustum can cull whole blocks
-      const CH = 24, chunks = new Map();
-      for (let j = 0; j < D; j++) for (let i = 0; i < W; i++) {
+    const tallTileGeo = new THREE.BoxGeometry(.5, 40, .5); tallTileGeo.translate(0, 18.7, 0); // a wall that goes up out of the light
+    const CH = 24; // tiles per chunk side: the frustum culls whole blocks, and a wall that moves rebuilds one block
+    const chunkKey = (i, j) => ((i / CH) | 0) * 1000 + ((j / CH) | 0);
+    const isTall = i => G.tall && i >= G.tall[0] && i < G.tall[1];
+    function buildChunk(key) {
+      const old = G.chunks.get(key);
+      if (old) { for (const m of old) { scene.remove(m); m.dispose(); G.meshes.splice(G.meshes.indexOf(m), 1); } }
+      const ci = Math.floor(key / 1000) * CH, cj = (key % 1000) * CH, { W, T, x0, z0 } = G;
+      const cells = [], tall = [];
+      for (let j = cj; j < Math.min(G.D, cj + CH); j++) for (let i = ci; i < Math.min(W, ci + CH); i++) {
         if (G.tiles[i + j * W] !== 1) continue;
-        if (tileAt(i - 1, j) !== 1 || tileAt(i + 1, j) !== 1 || tileAt(i, j - 1) !== 1 || tileAt(i, j + 1) !== 1) {
-          const key = ((i / CH) | 0) * 1000 + ((j / CH) | 0);
-          if (!chunks.has(key)) chunks.set(key, []);
-          chunks.get(key).push(i, j);
-        }
+        if (tileAt(i - 1, j) !== 1 || tileAt(i + 1, j) !== 1 || tileAt(i, j - 1) !== 1 || tileAt(i, j + 1) !== 1) (isTall(i) ? tall : cells).push(i, j);
       }
+      const made = [];
       const mat = new THREE.Matrix4();
-      for (const cells of chunks.values()) {
-        const mesh = new THREE.InstancedMesh(mazeTileGeo, M.ashWorld, cells.length / 2);
-        for (let k = 0; k < cells.length; k += 2) { mat.makeTranslation(x0 + (cells[k] + .5) * T, 1.3, z0 + (cells[k + 1] + .5) * T); mesh.setMatrixAt(k / 2, mat); }
+      for (const [list, geo] of [[cells, mazeTileGeo], [tall, tallTileGeo]]) {
+        if (!list.length) continue;
+        const mesh = new THREE.InstancedMesh(geo, M.ashWorld, list.length / 2);
+        for (let k = 0; k < list.length; k += 2) { mat.makeTranslation(x0 + (list[k] + .5) * T, 1.3, z0 + (list[k + 1] + .5) * T); mesh.setMatrixAt(k / 2, mat); }
         mesh.instanceMatrix.needsUpdate = true;
         mesh.computeBoundingSphere();
-        shadowed(mesh); scene.add(mesh); G.meshes.push(mesh);
+        shadowed(mesh); scene.add(mesh); G.meshes.push(mesh); made.push(mesh);
       }
+      G.chunks.set(key, made);
+      return made;
+    }
+    const dirtyChunks = new Set();
+    function setTile(i, j, v) { // a wall that arrives, or a doorway that is gone: the block it is in is rebuilt at the end of the frame
+      if (i < 0 || j < 0 || i >= G.W || j >= G.D || G.tiles[i + j * G.W] === v) return;
+      G.tiles[i + j * G.W] = v;
+      for (const [di, dj] of [[0, 0], [-1, 0], [1, 0], [0, -1], [0, 1]]) { const ii = i + di, jj = j + dj; if (ii >= 0 && jj >= 0 && ii < G.W && jj < G.D) dirtyChunks.add(chunkKey(ii, jj)); }
+    }
+    function flushChunks() { if (!dirtyChunks.size) return; for (const k of dirtyChunks) buildChunk(k); dirtyChunks.clear(); shadowRef.force = true; }
+    function buildMaze(phase, L) {
+      for (const m of G.meshes) { scene.remove(m); m.dispose(); }
+      G.meshes = []; G.chunks = new Map(); dirtyChunks.clear();
+      if (G.floor) { scene.remove(G.floor, G.ceiling); G.floor.geometry.dispose(); G.ceiling.traverse(o => { if (o.geometry) o.geometry.dispose(); }); }
+      genMaze(phase, L);
+      const { W, D, T, x0, z0 } = G;
+      const keys = new Set();
+      for (let j = 0; j < D; j += CH) for (let i = 0; i < W; i += CH) keys.add(chunkKey(i, j));
+      for (const k of keys) buildChunk(k);
       const fw = W * T, fd = D * T;
       // the floor is one sheet with a round hole in it: the well of the staircase
       const floorShape = new THREE.Shape(); floorShape.moveTo(x0, -(z0 + fd)); floorShape.lineTo(x0 + fw, -(z0 + fd)); floorShape.lineTo(x0 + fw, -z0); floorShape.lineTo(x0, -z0); floorShape.closePath();
       const hole = new THREE.Path(); hole.absarc(G.stair.x, -G.stair.z, WELL, 0, Math.PI * 2, true); floorShape.holes.push(hole);
       G.floor = shadowed(new THREE.Mesh(new THREE.ShapeGeometry(floorShape, 48), M.ashWorld2), false, true);
       G.floor.rotation.x = -Math.PI / 2; scene.add(G.floor);
-      const cw = G.hallStart * T;
-      G.ceiling = shadowed(new THREE.Mesh(new THREE.PlaneGeometry(cw, fd), M.ashWorld), false, true);
-      G.ceiling.rotation.x = Math.PI / 2; G.ceiling.position.set(x0 + cw / 2, 2.6, z0 + fd / 2); scene.add(G.ceiling);
+      // the ceiling covers the corridor, except where the walls go up out of the light
+      G.ceiling = new THREE.Group(); scene.add(G.ceiling);
+      const cwT = Math.min(G.hallStart, W);
+      const spans = G.tall ? [[0, Math.min(G.tall[0], cwT), 2.6], [Math.min(G.tall[1], cwT), cwT, 2.6]] : [[0, cwT, 2.6]];
+      if (G.low) { for (const sp of spans) if (sp[0] < G.low[0] && sp[1] > G.low[1]) { spans.push([G.low[1], sp[1], 2.6]); sp[1] = G.low[0]; } spans.push([G.low[0], G.low[1], 1.3]); }
+      for (const [a, b, y] of spans) {
+        if (b <= a) continue;
+        const c = shadowed(new THREE.Mesh(new THREE.PlaneGeometry((b - a) * T, fd), M.ashWorld), false, true);
+        c.rotation.x = Math.PI / 2; c.position.set(x0 + (a + b) / 2 * T, y, z0 + fd / 2); G.ceiling.add(c);
+      }
       if (!hallLid) { hallLid = new THREE.Mesh(new THREE.PlaneGeometry(fw, fd), M.black); hallLid.rotation.x = Math.PI / 2; hallLid.position.set(x0 + fw / 2, 60, z0 + fd / 2); scene.add(hallLid); }
+      lip.visible = G.hallStart < W;
       G.built = true;
+      shadowRef.force = true;
     }
     // the lip of the well in the Great Hall
     const lip = new THREE.Mesh(new THREE.RingGeometry(WELL, WELL + .25, 48), new THREE.MeshStandardMaterial({ color: 0x1b1b1e, roughness: .8, side: THREE.DoubleSide }));
@@ -1091,7 +1157,7 @@
     const columnGeo = new THREE.CylinderGeometry(.42, .42, 400, 24); columnGeo.translate(0, -200 + .9, 0); // a newel stub above the floor, the rest going down
     const column = new THREE.Mesh(columnGeo, M.ashWorld);
     column.position.set(G.stair.x, 0, G.stair.z); column.visible = false; shadowed(column); scene.add(column);
-    const stair = { active: false, u: 0, lastA: 0, theta0: Math.PI, beat: 0, deepest: 0, shown: false, k: 0, k0: null, f: .5, lastStep: 0 };
+    const stair = { active: false, u: 0, lastA: 0, theta0: Math.PI, beat: 0, deepest: 0, shown: false, k: 0, k0: null, f: .5, lastStep: 0, lastU: 0, lastSkip: 0, stretched: 0 };
     stair.depth = () => Math.max(0, Math.round(stair.u / STEP_A)) * RISE;
     const wrapPi = a => Math.atan2(Math.sin(a), Math.cos(a));
     function placeSteps(force) {
@@ -1138,7 +1204,7 @@
     pickup('tape2', 7, .02, 2.6, tapeBuild(M.labelTape2), { label: 'A Hi8 tape. In marker: 5½.', chapter: 'ch3' });
     pickup('photo', 3.7, .345, .49, g => { const p = add(g, mesh(new THREE.PlaneGeometry(.1, .05), M.tagPhoto), 0, .003, 0); p.rotation.x = -Math.PI / 2; p.rotation.z = -.4; p.material.side = THREE.DoubleSide; add(g, mesh(new THREE.BoxGeometry(.11, .002, .13), M.white), 0, .001, 0).rotation.y = -.4; }, { label: 'A photograph, face down. On the back, in pencil: K., 1989.', chapter: 'karen' });
     pickup('samples', 3.9, .77, 8.75, g => { const bag = add(g, mesh(new THREE.BoxGeometry(.14, .05, .1), new THREE.MeshStandardMaterial({ color: 0xcfd2d6, roughness: .3, transparent: true, opacity: .75 })), 0, .025, 0); bag.rotation.y = .3; add(g, mesh(new THREE.BoxGeometry(.11, .025, .08), M.ash), 0, .02, 0).rotation.y = .3; const tag = add(g, mesh(new THREE.PlaneGeometry(.09, .045), M.tagSample), .06, .004, .07); tag.rotation.x = -Math.PI / 2; tag.rotation.z = .9; tag.material.side = THREE.DoubleSide; }, { label: 'A specimen bag of gray dust, tagged in Reston’s hand.', chapter: 'samples' });
-    pickup('front_door', 2.5, 1, 12.92, g => { add(g, mesh(boxUV(new THREE.BoxGeometry(1, 2.05, .06), 1, 2.05, .06, 1), M.wood), 0, 0, 0); for (const y of [.55, -.15, -.75]) add(g, mesh(new THREE.BoxGeometry(.7, .45, .012), M.wood), 0, y, .035); add(g, mesh(new THREE.SphereGeometry(.03, 10, 8), M.brass), .38, -.05, .05); add(g, mesh(new THREE.BoxGeometry(.06, .11, .01), M.brass), .38, -.2, .035); }, { label: 'The front door.', door: 'front', reach: 1.8 });
+    const frontDoor = pickup('front_door', 2.5, 1, 12.92, g => { add(g, mesh(boxUV(new THREE.BoxGeometry(1, 2.05, .06), 1, 2.05, .06, 1), M.wood), 0, 0, 0); for (const y of [.55, -.15, -.75]) add(g, mesh(new THREE.BoxGeometry(.7, .45, .012), M.wood), 0, y, .035); add(g, mesh(new THREE.SphereGeometry(.03, 10, 8), M.brass), .38, -.05, .05); add(g, mesh(new THREE.BoxGeometry(.06, .11, .01), M.brass), .38, -.2, .035); }, { label: 'The front door.', door: 'front', reach: 1.8 });
     block(2.5, 12.95, 1, .2);
 
     // in the hallway, placed once it exists
@@ -1148,14 +1214,23 @@
     function placeMazePickups() {
       for (const p of mazePickups) { scene.remove(p); pickups.splice(pickups.indexOf(p), 1); }
       mazePickups = [];
-      if (G.short) { if (relayLantern) relayLantern.visible = false; relaySrc.intensity = 0; if (relayGlow) relayGlow.visible = false; for (const c of relayBlocks) { const k = colliders.indexOf(c); if (k >= 0) colliders.splice(k, 1); } return; }
       const gx = i => G.x0 + (i + .5) * G.T, gz = j => G.z0 + (j + .5) * G.T;
+      const put = p => { if (found.has(p.userData.chapter) && !p.userData.keep) { scene.remove(p); pickups.splice(pickups.indexOf(p), 1); return; } mazePickups.push(p); };
+      // the fishing line, tied off at the door: Navidson's, on the first trip, and everyone's after
+      if (G.phase !== 'empty') put(pickup('spool', G.x0 + .35, .02, 9.3, g => { add(g, mesh(new THREE.CylinderGeometry(.06, .06, .05, 12), M.paper), 0, .025, 0); add(g, mesh(new THREE.BoxGeometry(60, .004, .004), M.paper), 30, .03, 0); }, { label: 'A spool of fishing line, tied off at the door frame.', say: 'As long as the line holds, the way back is simple.', keep: true, reach: 1.4 }));
+      if (G.phase !== 'long') { // no Hall, no post at the top of the stairs
+        if (relayLantern) relayLantern.visible = false; relaySrc.intensity = 0; if (relayGlow) relayGlow.visible = false;
+        for (const c of relayBlocks) { const k = colliders.indexOf(c); if (k >= 0) colliders.splice(k, 1); } relayBlocks = [];
+        if (G.phase === 'a') put(pickup('navidson_cam', gx(G.L + 3), .01, gz(80), g => { add(g, mesh(new THREE.BoxGeometry(.2, .1, .11), M.plastic), 0, .05, 0).rotation.y = -.5; add(g, mesh(new THREE.CylinderGeometry(.03, .035, .06, 12), M.dark), -.09, .06, -.07).rotation.z = Math.PI / 2; add(g, mesh(new THREE.PlaneGeometry(.05, .022), M.white), .02, .101, .01).rotation.set(-Math.PI / 2, 0, -.5); }, { label: 'Navidson’s Hi8, set down on the floor. The tape inside is marked A.', chapter: 'explA' }));
+        if (G.phase === 'empty') put(pickup('bicycle', gx(G.low[0] - 3), 0, gz(77) + .55, g => { for (const dx of [-.55, .55]) add(g, mesh(new THREE.TorusGeometry(.32, .014, 6, 28), M.metal), dx, .03, 0).rotation.x = Math.PI / 2; add(g, mesh(new THREE.BoxGeometry(.9, .03, .03), M.dark), 0, .05, .02).rotation.y = .08; add(g, mesh(new THREE.BoxGeometry(.5, .03, .03), M.dark), .1, .05, .18).rotation.y = -.9; add(g, mesh(new THREE.BoxGeometry(.4, .03, .03), M.dark), -.2, .05, .2).rotation.y = .7; add(g, mesh(new THREE.CylinderGeometry(.02, .02, .3, 8), M.dark), .05, .05, .32).rotation.x = Math.PI / 2; add(g, mesh(new THREE.BoxGeometry(.22, .05, .08), M.leather), -.1, .06, .36); g.rotation.y = .5; }, { label: 'Navidson’s bicycle, left where the passage got too small for it.', say: 'He rode for days. Then the house made him crawl.', keep: true, reach: 2.4 }));
+        return;
+      }
       // the page about echoes lies in the first room off the corridor
       let firstDoor = null;
       for (let i = 10; i < 60 && !firstDoor; i++) { if (tileAt(i, 75) === 0) firstDoor = [i, -1]; else if (tileAt(i, 79) === 0) firstDoor = [i, 1]; }
       const pd = firstDoor || [20, -1];
       const pj = pd[1] < 0 ? 70 : 84;
-      const put = p => { if (found.has(p.userData.chapter) && !p.userData.keep) { scene.remove(p); pickups.splice(pickups.indexOf(p), 1); return; } mazePickups.push(p); };
+      G.firstDoor = pd[0]; // the door the page lies behind is one the house does not take away before you have read it
       put(pickup('page_echo', gx(pd[0]), .01, gz(pj), pageBuild(M.pageEcho), { label: 'A page in Zampanò’s hand. It is about echoes.', chapter: 'ch4' }));
       // Tom's post at the top of the stairs: a lantern, a recorder, and the only light in the Hall that is not yours
       const rx = G.stair.x - 4.1, rz = G.stair.z + .8;
@@ -1176,14 +1251,18 @@
         add(g, mesh(new THREE.CylinderGeometry(.09, .09, .05, 12), M.paper), .5, .025, -.2);
         for (let k = 0; k < 3; k++) add(g, mesh(new THREE.BoxGeometry(.05, .014, .05), M.dark), .3 + k * .07, .007, -.4 + hash(k + 7) * .1);
       }, { label: 'A cache of supplies, torn open. Water, batteries, nothing eaten.', chapter: 'ch5' }));
-      put(pickup('spool', G.x0 + .35, .02, 9.3, g => { add(g, mesh(new THREE.CylinderGeometry(.06, .06, .05, 12), M.paper), 0, .025, 0); add(g, mesh(new THREE.BoxGeometry(60, .004, .004), M.paper), 30, .03, 0); }, { label: 'A spool of fishing line, tied off at the door frame.', say: 'As long as the line holds, the way back is simple.', keep: true, reach: 1.4 }));
       put(pickup('map', G.stair.x - 4.8, .01, G.stair.z - 2.4, pageBuild(M.map, .42, .32), { label: 'A hand-drawn map. It stops at the stairs.', chapter: 'explorations' }));
+      if (!S.quarterAt) put(pickup('quarter', G.stair.x - WELL - .6, .012, G.stair.z + 1.7, g => { add(g, mesh(new THREE.CylinderGeometry(.012, .012, .002, 16), M.metal), 0, .001, 0); }, { label: 'A quarter. Drop it into the well and listen.', quarter: true, reach: 1.6 }));
     }
-    let stairPickups = { markers: null, camera: null };
+    let stairPickups = { markers: null, camera: null, jed: null };
     function placeStairPickups() {
       if (!stairPickups.markers && !found.has('ch6')) {
         const [x, y, z] = onStair(8);
         stairPickups.markers = pickup('markers', x, y, z, g => { for (let k = 0; k < 6; k++) { const s = add(g, mesh(new THREE.PlaneGeometry(.05, .3), M.orange), (hash(k) - .5) * .7, .005, (hash(k + 9) - .5) * .7); s.rotation.x = -Math.PI / 2; s.rotation.z = hash(k + 3) * 3; } }, { label: 'Neon markers. Shredded.', chapter: 'ch6', stairDepth: 8 });
+      }
+      if (!stairPickups.jed) {
+        const [x, y, z] = onStair(22);
+        stairPickups.jed = pickup('jed', x, y, z, g => { add(g, mesh(new THREE.BoxGeometry(.14, .025, .1), new THREE.MeshStandardMaterial({ color: 0x3a1c1c, roughness: 1 })), 0, .012, 0).rotation.y = .6; add(g, mesh(new THREE.BoxGeometry(.06, .015, .06), M.white), .1, .008, .05); }, { label: 'A bandage, stiff with blood. Jed kept Wax alive here for two days.', say: 'Two days. He talked to him the whole time, so that he would stay.', stairDepth: 22 });
       }
       if (!stairPickups.camera && !found.has('ch7')) {
         const [x, y, z, a] = onStair(30);
@@ -1295,7 +1374,8 @@
 
     /* ---------- story wiring ---------- */
 
-    const S = { closet: false, hallway: false, torn: false, fleeing: false, explore5: false, arrived: false };
+    const S = { closet: false, hallway: false, torn: false, fleeing: false, explore5: false, arrived: false, grewA: false, turnA: false, regrow: null, regrowText: null, collapsePending: false, collapseT: -1, collapsed: false, doorOpen: false, doorAjar: false, quarterAt: 0, stairShort: false, saidDoor: false, saidAnte: false, farOut: false };
+    const mazePhase = () => found.has('ch9') ? 'empty' : found.has('ch7') ? 'short' : found.has('explA') ? 'long' : 'a';
     function openCloset(silent) {
       if (S.closet) return; S.closet = true;
       closetPlug.open(); shadowRef.force = true;
@@ -1304,14 +1384,13 @@
     function openHallway(silent) {
       if (S.hallway) return; S.hallway = true;
       hallwayPlug.open();
-      buildMaze(found.has('ch7')); placeMazePickups();
-      lip.visible = true;
+      buildMaze(mazePhase()); placeMazePickups();
       placeSteps(true); placeStairPickups(); bakeStatics();
       if (!silent) { Sound.growl(.35); setTimeout(() => say('The living room has a new door. Behind it, the yard should be.'), 1200); }
     }
     function tearHouse(silent) {
       if (S.torn) return; S.torn = true;
-      if (G.built && !G.short) { buildMaze(true); placeMazePickups(); }
+      if (G.built && G.phase !== 'short') { buildMaze('short'); placeMazePickups(); }
       const rand = rng(41);
       for (const w of houseWalls) {
         if (w.tag === 'plug' || w.tag === 'lintel' || w.tag === 'sill') continue;
@@ -1332,23 +1411,27 @@
       bakeStatics();
       if (!silent) setTimeout(() => say('The house has moved.'), 800);
     }
+    const regrow = (phase, text) => { S.regrow = phase; S.regrowText = text || null; }; // the hallway is rebuilt the next time the house is between you and it
     AFTER_READ = {
       ch2: () => openCloset(),
       ch3: () => openHallway(),
+      explA: () => regrow('long', 'Karen wants it sealed. Navidson wants a camera on it. Holloway wants in.'),
       karen: () => say('She did not want to live in a house with a closed room in it. Then the house grew one.', 7000),
       explorations: () => say('The map ends at the stairs. So did the line.', 6000),
       samples: () => say('The dust is older than the house. Older than Virginia. Older, if the lab is right, than the earth.', 8000),
       tom: () => { relaySrc.intensity = 0; if (relayGlow) relayGlow.visible = false; if (relayLantern) relayLantern.traverse(o => { if (o.isMesh && o.material.emissive) o.material.emissiveIntensity = 0; }); Sound.knock(); setTimeout(() => say('The lantern has gone out. Tom kept it lit for days.', 6000), 700); },
       ch7: () => { S.fleeing = true; Sound.growl(1); shake = 1.4; torchDip = 1; setTimeout(() => say('Go back up. Now.', 6000), 1500); },
-      rescue: () => say('Everyone the rope reached came up. It did not reach everyone.', 7000),
+      rescue: () => { S.collapsePending = true; say('Everyone the rope reached came up. It did not reach everyone.', 7000); },
+      collapse: () => say('Karen has the children in the car. Navidson is still filming.', 7000),
       ch8: () => say('Karen left with the children. Something of hers is still in the bedroom.', 7000),
-      ch9: () => { S.explore5 = true; say('The doorway is still there. Navidson went back in alone.', 7000); },
+      ch9: () => { S.explore5 = true; regrow('empty'); say('The doorway is still there. Navidson went back in alone.', 7000); },
       ch11: () => { unlock('letters', false); unlock('exhibits', false); unlock('index', false); }
     };
     // resume a house left half-explored
     if (found.has('ch2')) openCloset(true);
     if (found.has('ch3')) openHallway(true);
     if (found.has('ch7')) tearHouse(true);
+    if (found.has('rescue')) applyCollapsed();
     if (found.has('ch9')) S.explore5 = true;
     for (const p of [...pickups]) if (p.userData.chapter && found.has(p.userData.chapter) && !p.userData.keep) { scene.remove(p); pickups.splice(pickups.indexOf(p), 1); }
     if (found.has('ch11') && !store.get('again', false)) { game.ended = true; }
@@ -1378,9 +1461,11 @@
       Sound.init(); Sound.resume();
       if (u.door === 'front') {
         if (game.ended) { finish(); return; }
+        if (S.doorOpen) { openFrontDoor(p); return; }
         say(found.has('ch1') ? 'The door does not open. You came in; the house decides when you go.' : 'It closed behind you. It does not open from this side.');
         return;
       }
+      if (u.quarter) { dropQuarter(p); return; }
       if (u.say) say(u.say);
       if (u.chapter) {
         Sound.click();
@@ -1388,6 +1473,88 @@
         if (u.id === 'trunk' && found.has('ch11')) { unlock('letters'); return; }
         unlock(u.chapter);
       }
+    }
+
+    /* the house closes: after the rescue, the rooms the family lives in come apart around them */
+    const leanMore = (w, rand) => [(rand() - .5) * .22, (rand() - .5) * .3 * (w.tag === 'plug' || w.tag === 'sill' || w.tag === 'lintel' ? .5 : 1)];
+    function startCollapse() {
+      S.collapsePending = false; S.collapseT = 0; S.doorOpen = true;
+      const rand = rng(77);
+      for (const w of houseWalls) {
+        if (!w.mesh.parent) continue;
+        statics.delete(w.mesh); w.mesh.visible = true; w.mesh.matrixAutoUpdate = true; // the walls move on their own for a while
+        const [dx, dz] = leanMore(w, rand);
+        w.lean0 = [w.mesh.rotation.x, w.mesh.rotation.z]; w.lean1 = [w.mesh.rotation.x + dx, w.mesh.rotation.z + dz];
+      }
+      bakeStatics();
+      Sound.growl(1.3); shake = 2; torchDip = 1;
+      say('The house is closing.', 4000);
+      for (const [ms, text] of [[4500, 'Tom has Daisy. Chad is out. The front door.'], [11000, 'The floor is going.'], [18000, 'Get out of the house.']]) setTimeout(() => { if (S.collapseT >= 0) say(text, 5000); }, ms);
+    }
+    function collapseStep(dt) {
+      S.collapseT += dt;
+      const k = clamp(S.collapseT / 26, 0, 1), e = k * k * (3 - 2 * k);
+      for (const w of houseWalls) if (w.lean1 && w.mesh.parent) { w.mesh.rotation.x = w.lean0[0] + (w.lean1[0] - w.lean0[0]) * e; w.mesh.rotation.z = w.lean0[1] + (w.lean1[1] - w.lean0[1]) * e; }
+      houseCeiling.position.y = (S.torn ? H + .6 : H) - .9 * e;
+      if (Math.random() < dt / 2.2) { Sound.play('door_close', { gain: .9, rate: .7 + Math.random() * .4 }); shake = Math.max(shake, .8); torchDip = Math.max(torchDip, .5); }
+      if (Math.random() < dt / 5) Sound.growl(.6);
+      for (const l of lamps) if (l.src.intensity > 0 && Math.random() < dt / 6) { l.src.intensity = 0; l.bulb.visible = false; }
+      const outside = P.z > 13.4 || P.z < -.4 || P.x < -.4;
+      if (S.collapseT > 30 || (outside && S.collapseT > 6)) endCollapse(outside);
+    }
+    function endCollapse(outside) {
+      S.collapseT = -1; S.collapsed = true;
+      for (const w of houseWalls) if (w.lean1 && w.mesh.parent) { w.mesh.rotation.x = w.lean1[0]; w.mesh.rotation.z = w.lean1[1]; stat(w.mesh); }
+      houseCeiling.position.y = (S.torn ? H + .6 : H) - .9;
+      bakeStatics();
+      setTimeout(() => say(outside ? 'The house stops. Tom did not come out.' : 'The house stops. Tom is not in it.', 8000), 1500);
+    }
+    function applyCollapsed() { // a house reopened after it closed
+      if (S.collapsed) return; S.collapsed = true; S.doorOpen = true;
+      const rand = rng(77);
+      for (const w of houseWalls) { if (!w.mesh.parent) continue; const [dx, dz] = leanMore(w, rand); w.mesh.rotation.x += dx; w.mesh.rotation.z += dz; }
+      houseCeiling.position.y = (S.torn ? H + .6 : H) - .9;
+      openFrontDoor(frontDoor, true);
+    }
+    function openFrontDoor(p, silent) { // hinged on the west jamb, it swings outward
+      if (S.doorAjar) return; S.doorAjar = true;
+      for (const c of p.children) c.position.x += .5; p.position.x -= .5; p.userData.swing = silent ? 1 : 0;
+      if (silent) p.rotation.y = -1.9;
+      const k = colliders.findIndex(c => Math.abs(c.x0 - 2) < .01 && Math.abs(c.z0 - 12.85) < .01); if (k >= 0) colliders.splice(k, 1);
+      p.userData.label = 'The front door. Open.';
+      if (!silent) { Sound.play('door_open', { gain: .8, rate: .9 }); say('The door opens. Outward.', 4000); }
+    }
+    function dropQuarter(p) {
+      scene.remove(p); pickups.splice(pickups.indexOf(p), 1); target = null; hud.prompt.hidden = true;
+      S.quarterAt = t; Sound.coin(); say('Listen.', 2500); setTimeout(() => say('You will not hear it land.', 7000), 7000);
+    }
+    /* Exploration A: the corridor is longer on the way back */
+    function explorationA() {
+      const fx = -Math.sin(P.yaw);
+      if (!S.grewA && P.x > G.x0 + (G.L - 1) * G.T && fx > .4) { S.grewA = true; buildMaze('a', G.L + 30); P.x += 30 * G.T; P.lineOut += 30 * G.T; placeMazePickups(); S.turnA = true; }
+      if (S.turnA && fx < -.5) { S.turnA = false; Sound.knock(); say('The corridor is longer than it was.', 6000); }
+    }
+    /* walls that move only when nobody is looking: a doorway you passed is gone, a wall you passed has one */
+    let driftT = 16;
+    function driftWalls(dt) {
+      driftT -= dt; if (driftT > 0) return; driftT = 14 + Math.random() * 12;
+      const j = Math.floor((P.z - G.z0) / G.T); if (j < 76 || j > 78) return; // only while you stand in the corridor itself
+      const fx = -Math.sin(P.yaw), pi = Math.floor((P.x - G.x0) / G.T);
+      const behind = i => Math.abs(i - pi) > 12 && ((i - pi) * fx < 0 || Math.abs(i - pi) > 40);
+      const doors = [], walls = [];
+      for (let i = 4; i < Math.min(G.hallStart, G.W) - 4; i++) for (const [row, back] of [[75, 74], [79, 80]]) {
+        if (!behind(i)) continue;
+        if (tileAt(i, row) === 0 && (i !== G.firstDoor || found.has('ch4'))) doors.push([i, row]);
+        else if (tileAt(i, back) === 0 && tileAt(i, row) === 1) walls.push([i, row]);
+      }
+      let changed = false;
+      if (doors.length && Math.random() < .7) { const [i, row] = doors[Math.floor(Math.random() * doors.length)]; setTile(i, row, 1); changed = true; if (!S.saidDoor) { S.saidDoor = true; setTimeout(() => say('There was a door there.', 5000), 400); } }
+      if (walls.length && Math.random() < .6) { const [i, row] = walls[Math.floor(Math.random() * walls.length)]; setTile(i, row, 0); changed = true; }
+      else if (Math.random() < .5) { // a niche where there was wall
+        const i = pi + (fx > 0 ? -1 : 1) * (14 + Math.floor(Math.random() * 20)), row = Math.random() < .5 ? 75 : 79, dir = row === 75 ? -1 : 1;
+        if (i > 4 && i < Math.min(G.hallStart, G.W) - 4 && tileAt(i, row) === 1) { setTile(i, row, 0); for (let k = 1; k <= 3; k++) for (let di = -1; di <= 1; di++) setTile(i + di, row + dir * k, 0); changed = true; }
+      }
+      if (changed) { flushChunks(); Sound.knock(); }
     }
 
     /* Exploration #5: the dark with no dimensions */
@@ -1442,7 +1609,7 @@
 
     /* ---------- frame ---------- */
 
-    let last = performance.now(), t = 0, shake = 0, torchDip = 0, fogTarget = .05, sayBeat = 0, fps = 60, recStart = 0, idle = 0, slow = 0, settled = 0;
+    let last = performance.now(), t = 0, shake = 0, torchDip = 0, fogTarget = .05, sayBeat = 0, emptyBeat = 0, fps = 60, recStart = 0, idle = 0, slow = 0, settled = 0;
     function resize() {
       const w = innerWidth, h = innerHeight; renderer.setSize(w, h, false); composer.setPixelRatio(dpr()); composer.setSize(w, h); bloom.setSize(w / 2, h / 2);
       camera.aspect = w / h; camera.updateProjectionMatrix();
@@ -1486,6 +1653,7 @@
       mx += stick.dx; mz += stick.dz;
       const mag = Math.hypot(mx, mz); if (mag > 1) { mx /= mag; mz /= mag; }
       let speed = keys.has('run') ? 3.4 : 2.1;
+      if (G.low && P.x > G.x0 + G.low[0] * G.T && P.x < G.x0 + G.low[1] * G.T) speed *= .5; // on your hands and knees
       if (stair.active) speed *= .85 * clamp(Math.hypot(P.x - G.stair.x, P.z - G.stair.z) / 1.7, .45, 1); // the turn is tighter near the column
 
       const fx = -Math.sin(P.yaw), fz = -Math.cos(P.yaw), rx = Math.cos(P.yaw), rz = -Math.sin(P.yaw);
@@ -1504,7 +1672,15 @@
           stair.u = -HALF_STEP; const ta = stair.theta0 - HALF_STEP; stair.lastA = wrapPi(ta);
           P.x = cx + Math.cos(ta) * r; P.z = cz + Math.sin(ta) * r; dx = P.x - cx; dz = P.z - cz;
         }
-        const sk = Math.round(stair.u / STEP_A);
+        let sk = Math.round(stair.u / STEP_A);
+        // climbing out after Holloway's tape: the house stretches under you, and puts back six of the stairs you climbed, four times at most
+        if (S.fleeing && !S.torn && sk > 2 && stair.u < stair.lastU - 1e-4 && t - stair.lastSkip > 7 && stair.stretched < 4 && Math.hypot(P.vx, P.vz) > .3 && !reduced) {
+          const dk = -6, da = dk * STEP_A; stair.lastSkip = t; stair.stretched++; stair.u -= da; sk -= dk;
+          const a2 = a - da; P.x = cx + Math.cos(a2) * r; P.z = cz + Math.sin(a2) * r; P.yaw += da; stair.lastA = wrapPi(a2); stair.k = sk; dx = P.x - cx; dz = P.z - cz;
+          camY = 1.6 - stair.depth(); placeSteps(true); shadowRef.force = true; Sound.growl(.8); shake = Math.max(shake, 1.2); torchDip = .6;
+          if (!S.stairShort) { S.stairShort = true; say('The staircase is longer than it was. It is adding to itself under you.', 6000); }
+        }
+        stair.lastU = stair.u;
         const outward = (P.vx * dx + P.vz * dz) / (r * (Math.hypot(P.vx, P.vz) || 1e-6));
         if (sk === 0 && r > R_OUT && outward > .5) { // walking out over the edge of the top tread, back onto the floor of the Hall
           stair.active = false; const kk = (WELL + P.r + .05) / r; P.x = cx + dx * kk; P.z = cz + dz * kk;
@@ -1544,12 +1720,12 @@
           }
         }
         // the door back, once you have seen the bottom of what you can see
-        if (S.explore5 && P.x > G.x0 + .5 && P.x < G.x0 + 3 && P.z > 7.4 && P.z < 9.8) startExploration5();
+        if (S.explore5 && G.phase === 'empty' && P.x > G.x0 + 75) startExploration5();
       }
       if (stair.active) { // the eye follows the gait: level on the tread, then down over the edge
         const f = stair.f, target = reduced ? 1.6 - stair.u / STEP_A * RISE : 1.6 - (stair.k + THREE.MathUtils.smoothstep(f, .55, 1)) * RISE - .02 * Math.sin(Math.PI * f);
         camY += (target - camY) * (1 - Math.exp(-dt * (reduced ? 6 : 22)));
-      } else camY += (1.6 - camY) * (1 - Math.exp(-dt * 14));
+      } else { const crawl = G.low && P.x > G.x0 + G.low[0] * G.T && P.x < G.x0 + G.low[1] * G.T; camY += ((crawl ? .95 : 1.6) - camY) * (1 - Math.exp(-dt * (crawl ? 4 : 14))); }
 
       // footsteps
       const reg = region();
@@ -1560,14 +1736,27 @@
       if (reg === 'maze' || reg === 'hall') {
         P.lineOut = Math.max(P.lineOut, P.x - G.x0);
         const out = (P.x - G.x0) * FT;
-        hud.meter.textContent = reg === 'hall' ? 'The Great Hall.' : `Line paid out: ${fmt(out)} ft.`;
-        while (sayBeat < HALL_BEATS.length && !G.short && (P.x - G.x0) >= HALL_BEATS[sayBeat][0]) { const [, text, fx] = HALL_BEATS[sayBeat++]; say(text); if (fx === 'growl') { Sound.growl(); shake = 1; torchDip = 1; } }
+        hud.meter.textContent = reg === 'hall' ? (S.quarterAt ? `The Great Hall. The quarter has been falling for ${fmt(t - S.quarterAt)} s.` : 'The Great Hall.') : G.phase === 'empty' ? `${fmt(out)} ft. No line.` : `Line paid out: ${fmt(out)} ft.`;
+        if (G.phase === 'long') while (sayBeat < HALL_BEATS.length && (P.x - G.x0) >= HALL_BEATS[sayBeat][0]) {
+          const [, text, fx] = HALL_BEATS[sayBeat++]; say(text);
+          if (fx === 'growl') { Sound.growl(); shake = 1; torchDip = 1; }
+          if (fx === 'longer' && G.L < 180) { buildMaze('long', 180); placeMazePickups(); } // the Hall recedes: the corridor is always longer than it was
+        }
+        if (G.phase === 'empty') while (emptyBeat < EMPTY_BEATS.length && (P.x - G.x0) >= EMPTY_BEATS[emptyBeat][0]) say(EMPTY_BEATS[emptyBeat++][1], 6000);
+        if (G.phase === 'a') explorationA();
+        if (G.ante && !S.saidAnte) { const i = (P.x - G.x0) / G.T; if (i > G.ante[0] && i < G.ante[1]) { S.saidAnte = true; say('A room with a doorway on every side. All of them go in. None of them go back.', 7000); } }
+        if ((G.phase === 'long' || G.phase === 'short') && !stair.active) driftWalls(dt);
         if (S.torn && (P.x - G.x0) > 2 && Math.random() < dt / 30) { Sound.growl(.5); shake = .5; torchDip = .6; }
       } else if (reg === 'house') {
-        hud.meter.textContent = S.torn ? 'The house is not the size it was.' : '';
-        if (S.torn && Math.random() < dt / 25) { Sound.growl(.4); shake = .4; torchDip = .5; }
+        if (S.regrow && G.built) { buildMaze(S.regrow); placeMazePickups(); const txt = S.regrowText; S.regrow = S.regrowText = null; if (txt) setTimeout(() => say(txt, 7000), 800); }
+        if (S.collapsePending && S.collapseT < 0 && !S.collapsed) startCollapse();
+        hud.meter.textContent = S.collapseT >= 0 ? 'The house is closing.' : S.torn ? 'The house is not the size it was.' : '';
+        if (S.torn && S.collapseT < 0 && Math.random() < dt / 25) { Sound.growl(.4); shake = .4; torchDip = .5; }
         if (!S.torn && Math.random() < dt / 90) Sound.knock();
+        if (S.doorAjar && P.z > 14 && !S.farOut && Math.hypot(P.x - 7, P.z - 6.5) > 24) { S.farOut = true; say('The house is behind you. So is everything in it.', 7000); }
       }
+      if (S.collapseT >= 0) collapseStep(dt);
+      if (S.doorAjar && frontDoor.userData.swing < 1) { const sw = frontDoor.userData.swing = Math.min(1, frontDoor.userData.swing + dt * .7); frontDoor.rotation.y = -1.9 * sw * sw * (3 - 2 * sw); }
       Sound.ambience(reg !== 'house' || S.torn, reg === 'house' ? .08 : reg === 'stair' ? .22 : .16);
       Sound.weather(reg === 'house' && !S.torn);
       Sound.groan(reg === 'house' && S.torn);
@@ -1671,7 +1860,7 @@
     }
 
     // for tests and the curious
-    window.ATL = { P, S, G, stair, stairTo, colliders, statics, baked, sources, pool, yawTo: (dx, dz) => Math.atan2(-dx, -dz), models, fps: () => Math.round(fps), loaded: () => loadDone, teleport(x, z, yaw = P.yaw) { P.x = x; P.z = z; P.yaw = yaw; P.vx = P.vz = 0; }, look(yaw, pitch = 0) { P.yaw = yaw; P.pitch = pitch; }, target: () => target?.userData.id, interact: () => target && interact(target), found, unlock, keys, renderer, scene };
+    window.ATL = { P, S, G, stair, stairTo, colliders, statics, baked, sources, pool, regrow: (phase, L) => { buildMaze(phase, L); placeMazePickups(); }, setTile, flushChunks, driftWalls, startCollapse, tileAt, camY: () => camY, yawTo: (dx, dz) => Math.atan2(-dx, -dz), models, fps: () => Math.round(fps), loaded: () => loadDone, teleport(x, z, yaw = P.yaw) { P.x = x; P.z = z; P.yaw = yaw; P.vx = P.vz = 0; }, look(yaw, pitch = 0) { P.yaw = yaw; P.pitch = pitch; }, target: () => target?.userData.id, interact: () => target && interact(target), found, unlock, keys, renderer, scene };
   }
 
   /* ================================================================
