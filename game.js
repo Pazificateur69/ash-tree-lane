@@ -1186,6 +1186,7 @@
     /* ---------- things to find ---------- */
 
     const pickups = [];
+    const dropPickup = p => { const k = pickups.indexOf(p); if (k >= 0) pickups.splice(k, 1); }; // never splice at -1: that would take the last thing found instead
     function pickup(id, x, y, z, build, data) {
       const g = new THREE.Group(); g.position.set(x, y, z); build(g);
       g.traverse(o => { if (o.isMesh) shadowed(o); });
@@ -1212,10 +1213,10 @@
     let relayLantern = null, relayGlow = null, relayBlocks = [];
     const relaySrc = source(0, .5, 0, 0xffa858, 0, 9);
     function placeMazePickups() {
-      for (const p of mazePickups) { scene.remove(p); pickups.splice(pickups.indexOf(p), 1); }
+      for (const p of mazePickups) { scene.remove(p); dropPickup(p); }
       mazePickups = [];
       const gx = i => G.x0 + (i + .5) * G.T, gz = j => G.z0 + (j + .5) * G.T;
-      const put = p => { if (found.has(p.userData.chapter) && !p.userData.keep) { scene.remove(p); pickups.splice(pickups.indexOf(p), 1); return; } mazePickups.push(p); };
+      const put = p => { if (found.has(p.userData.chapter) && !p.userData.keep) { scene.remove(p); dropPickup(p); return; } mazePickups.push(p); };
       // the fishing line, tied off at the door: Navidson's, on the first trip, and everyone's after
       if (G.phase !== 'empty') put(pickup('spool', G.x0 + .35, .02, 9.3, g => { add(g, mesh(new THREE.CylinderGeometry(.06, .06, .05, 12), M.paper), 0, .025, 0); add(g, mesh(new THREE.BoxGeometry(60, .004, .004), M.paper), 30, .03, 0); }, { label: 'A spool of fishing line, tied off at the door frame.', say: 'As long as the line holds, the way back is simple.', keep: true, reach: 1.4 }));
       if (G.phase !== 'long') { // no Hall, no post at the top of the stairs
@@ -1272,7 +1273,7 @@
     let tornPickups = false;
     function placeTornPickups() {
       if (tornPickups) return; tornPickups = true;
-      const put = p => { if (found.has(p.userData.chapter)) { scene.remove(p); pickups.splice(pickups.indexOf(p), 1); } };
+      const put = p => { if (found.has(p.userData.chapter)) { scene.remove(p); dropPickup(p); } };
       put(pickup('radio', 12.6, 0, 8.4, g => { const r = model('radio', { size: .23 }); scene.remove(r); r.position.set(0, 0, 0); r.rotation.y = -.6; g.add(r); add(g, mesh(new THREE.BoxGeometry(.012, .012, .012), M.led), .06, .12, .11); }, { label: 'Tom’s radio. It is still on.', chapter: 'ch8', reach: 2.4 }));
       put(pickup('karen_tapes', 1.1, .345, .46, g => { for (let k = 0; k < 3; k++) add(g, mesh(new THREE.BoxGeometry(.19, .025, .1), M.tape), 0, .0125 + k * .027, 0).rotation.y = (k - 1) * .15; add(g, mesh(new THREE.PlaneGeometry(.13, .05), M.labelKaren), 0, .082, 0).rotation.set(-Math.PI / 2, 0, .3); }, { label: 'VHS tapes, labeled in Karen’s hand: WHAT SOME HAVE THOUGHT.', chapter: 'ch9' }));
       // the rigging Tom built at the top of the stairs, for the wounded
@@ -1433,7 +1434,7 @@
     if (found.has('ch7')) tearHouse(true);
     if (found.has('rescue')) applyCollapsed();
     if (found.has('ch9')) S.explore5 = true;
-    for (const p of [...pickups]) if (p.userData.chapter && found.has(p.userData.chapter) && !p.userData.keep) { scene.remove(p); pickups.splice(pickups.indexOf(p), 1); }
+    for (const p of [...pickups]) if (p.userData.chapter && found.has(p.userData.chapter) && !p.userData.keep) { scene.remove(p); dropPickup(p); }
     if (found.has('ch11') && !store.get('again', false)) { game.ended = true; }
 
     let target = null;
@@ -1469,7 +1470,7 @@
       if (u.say) say(u.say);
       if (u.chapter) {
         Sound.click();
-        if (!u.keep) { scene.remove(p); pickups.splice(pickups.indexOf(p), 1); target = null; hud.prompt.hidden = true; }
+        if (!u.keep) { scene.remove(p); dropPickup(p); target = null; hud.prompt.hidden = true; }
         if (u.id === 'trunk' && found.has('ch11')) { unlock('letters'); return; }
         unlock(u.chapter);
       }
@@ -1525,7 +1526,7 @@
       if (!silent) { Sound.play('door_open', { gain: .8, rate: .9 }); say('The door opens. Outward.', 4000); }
     }
     function dropQuarter(p) {
-      scene.remove(p); pickups.splice(pickups.indexOf(p), 1); target = null; hud.prompt.hidden = true;
+      scene.remove(p); dropPickup(p); target = null; hud.prompt.hidden = true;
       S.quarterAt = t; Sound.coin(); say('Listen.', 2500); setTimeout(() => say('You will not hear it land.', 7000), 7000);
     }
     /* Exploration A: the corridor is longer on the way back */
