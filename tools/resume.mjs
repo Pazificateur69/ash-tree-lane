@@ -1,7 +1,7 @@
 // Run from the repository root with a static server on port 8123: node tools/resume.mjs (needs playwright-core; CHROME=... to pick a Chromium)
 // Loads the house with saved progress at several points of the story and checks that the frame loop runs and nothing throws.
 import { chromium } from 'playwright-core';
-const browser = await chromium.launch({ executablePath: process.env.CHROME || '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--no-sandbox'] });
+const browser = await chromium.launch({ executablePath: process.env.CHROME || undefined, args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--no-sandbox'] });
 const STATES = {
   fresh: ['edition', 'colophon'],
   closet: ['edition', 'colophon', 'ch1', 'ch2'],

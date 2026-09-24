@@ -1,6 +1,4 @@
 // Walks the house in headless Chromium: loads the page, opens the door, teleports through the story and screenshots each scene.
-// Run from the repository root with a static server on port 8123 (python3 -m http.server 8123): node tools/walk.mjs
-// Needs playwright-core; set CHROME to a Chromium binary, or leave it unset to use Playwright's own.
 import { chromium } from 'playwright-core';
 import { mkdirSync } from 'node:fs';
 const OUT = new URL('../.cache/shots/', import.meta.url).pathname; mkdirSync(OUT, { recursive: true });

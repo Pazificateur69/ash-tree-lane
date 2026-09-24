@@ -1,8 +1,8 @@
 # Credits
 
-Every asset the house is built from, with its source and licence. The CC BY items are also credited in the colophon of the site. Textures were resized and re-encoded; models were optimized (WebP textures, quantized geometry, some simplified) and some were cut out of whole-room scenes with `tools/extract.mjs`.
+Every asset the house is built from, with its source and license. The CC BY items are also credited in the colophon of the site. Textures were resized and re-encoded; models were optimized (WebP textures, quantized geometry, some simplified) and some were cut out of whole-room scenes with `tools/extract.mjs`.
 
-| Files | Asset | Author, source | Licence | Link |
+| Files | Asset | Author, source | License | Link |
 |---|---|---|---|---|
 | `assets/textures/woodfloor_*.jpg` | WoodFloor041 | ambientCG (via aframe-enviropacks) | CC0 1.0 | https://ambientcg.com/view?id=WoodFloor041 |
 | `assets/textures/mahogany_*.jpg` | Wood027 | ambientCG (via aframe-enviropacks) | CC0 1.0 | https://ambientcg.com/view?id=Wood027 |
@@ -25,7 +25,6 @@ Every asset the house is built from, with its source and licence. The CC BY item
 | `assets/models/glass_hurricane_candle_holder.glb` | GlassHurricaneCandleHolder | Eric Chadwick, Wayfair (Khronos glTF-Sample-Assets) | CC BY 4.0 | https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/GlassHurricaneCandleHolder |
 | `assets/models/glass_broken_window.glb` | GlassBrokenWindow | Eric Chadwick, Wayfair (Khronos glTF-Sample-Assets) | CC BY 4.0 | https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/GlassBrokenWindow |
 | `assets/models/lights_punctual_lamp.glb` | LightsPunctualLamp | Teresa Gonzalez Viegas, Darmstadt Graphics Group (Khronos glTF-Sample-Assets) | CC BY 4.0 | https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/LightsPunctualLamp |
-| `assets/models/diffuse_transmission_plant.glb` | DiffuseTransmissionPlant | Darmstadt Graphics Group, over a CC0 plant by Rico Cilliers (Khronos glTF-Sample-Assets) | CC BY 4.0 | https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/DiffuseTransmissionPlant |
 | `assets/models/leather_sofa.glb` | SheenWoodLeatherSofa | Darmstadt Graphics Group, over a CC0 sofa by Fran Calvente, Poly Haven (Khronos glTF-Sample-Assets) | CC BY 4.0 | https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/SheenWoodLeatherSofa |
 | `assets/models/coffee_mug.glb` | coffeeMug | three.js examples | MIT | https://github.com/mrdoob/three.js/tree/r170/examples/models/gltf |
 | `assets/models/bed.glb, blanket.glb, nightstand.glb, bedside_lamp.glb, curtain.glb, rug.glb, boxes.glb, book.glb, picture.glb, vase_small.glb, plant_small.glb` | Bedroom | SlykDrako (Benedikt Bitterli rendering resources, GLB via gkjohnson/3d-demo-data) | CC0 1.0 | https://benedikt-bitterli.me/resources/ |
