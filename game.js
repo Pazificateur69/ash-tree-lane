@@ -1477,7 +1477,7 @@
     }
 
     /* the house closes: after the rescue, the rooms the family lives in come apart around them */
-    const leanMore = (w, rand) => [(rand() - .5) * .22, (rand() - .5) * .3 * (w.tag === 'plug' || w.tag === 'sill' || w.tag === 'lintel' ? .5 : 1)];
+    function leanMore(w, rand) { return [(rand() - .5) * .22, (rand() - .5) * .3 * (w.tag === 'plug' || w.tag === 'sill' || w.tag === 'lintel' ? .5 : 1)]; } // a declaration: a reopened house leans before this section runs
     function startCollapse() {
       S.collapsePending = false; S.collapseT = 0; S.doorOpen = true;
       const rand = rng(77);
