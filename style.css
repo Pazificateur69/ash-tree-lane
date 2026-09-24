@@ -8,7 +8,7 @@
   --paper-2: #ecece6;
   --ink: #17171a;
   --ink-2: #45454d;
-  --ink-3: #75757d;
+  --ink-3: #66666e;
   --rule: #d4d4cc;
   --house: #2447d6;
   --mino: #c0282d;
@@ -67,6 +67,7 @@ button { font: inherit; color: inherit; }
 cite { font-style: italic; }
 
 :focus-visible { outline: 2px solid var(--house); outline-offset: 4px; }
+.game :focus-visible, .dark :focus-visible { outline-color: #7d96ff; } /* the blue that reads on black */
 [tabindex="-1"]:focus { outline: none; }
 
 .sr-only {
@@ -87,6 +88,8 @@ cite { font-style: italic; }
   font-size: .8rem;
 }
 .skip:focus { top: 16px; }
+body.in-house .skip, body.journal-open .skip { display: none; }
+.js .book { display: none; } /* with script the book is read through the journal; without it, it is the page */
 
 /* the two words the book colours */
 .house { color: var(--house); }
@@ -264,13 +267,13 @@ html:not(.js) .chapter > aside + p { text-indent: 0; }
 
 sup { line-height: 0; }
 a.ref {
-  display: inline;
-  min-width: 1.1em;
+  display: inline-block; /* a real box, so the small numerals are something a finger can hit */
+  min-width: 1.4em;
   padding: .45em .12em .45em .06em;
   margin: -.45em -.1em -.45em 0;
   font-family: var(--z);
   font-size: .72em;
-  text-align: left;
+  text-align: center;
   text-indent: 0;
   text-decoration: none;
   color: var(--ink);
@@ -680,7 +683,7 @@ main > .colophon {
 .dark-btn {
   padding: .6em 1.1em;
   background: rgba(11, 11, 13, .6);
-  border: 1px solid rgba(217, 216, 210, .28);
+  border: 1px solid rgba(217, 216, 210, .5);
   font-family: var(--j);
   font-size: .8rem;
   color: var(--moon);
@@ -752,7 +755,7 @@ main > .colophon {
 .dark-page.title-page { display: grid; place-content: center; text-align: center; }
 .dark-page.title-page p { margin: 0; }
 .dark-page .page-title { font-size: 2em; line-height: 1.1; }
-.dark-page .page-foot { position: absolute; bottom: 1.2em; left: 0; right: 0; text-align: center; font-size: .8em; color: #6d6d73; }
+.dark-page .page-foot { position: absolute; bottom: 1.2em; left: 0; right: 0; text-align: center; font-size: .8em; color: #5f5f66; }
 
 /* ---------- motion preferences + scroll-driven extras ---------- */
 
@@ -794,11 +797,11 @@ main > .colophon {
   margin: -1px;
   background: rgba(255, 255, 255, .55);
 }
-.hud-meter { position: absolute; left: var(--gutter); bottom: 20px; margin: 0; font-size: .8rem; color: rgba(217, 216, 210, .6); font-variant-numeric: tabular-nums; }
+.hud-meter { position: absolute; left: calc(var(--gutter) + env(safe-area-inset-left, 0px)); bottom: calc(20px + env(safe-area-inset-bottom, 0px)); margin: 0; font-size: .8rem; color: rgba(217, 216, 210, .8); text-shadow: 0 1px 6px #000, 0 0 2px #000; font-variant-numeric: tabular-nums; }
 .hud-sub {
   position: absolute;
   left: 50%;
-  bottom: 15vh;
+  bottom: calc(7vh + 5rem + env(safe-area-inset-bottom, 0px)); /* above the prompt, however many lines it has */
   width: min(90vw, 36rem);
   margin: 0;
   transform: translateX(-50%);
@@ -816,7 +819,7 @@ main > .colophon {
 .hud-prompt {
   position: absolute;
   left: 50%;
-  bottom: 7vh;
+  bottom: calc(7vh + env(safe-area-inset-bottom, 0px));
   max-width: min(90vw, 30rem);
   transform: translateX(-50%);
   pointer-events: auto;
@@ -830,11 +833,11 @@ main > .colophon {
   cursor: pointer;
 }
 .hud-prompt:hover { border-color: rgba(217, 216, 210, .9); }
-.hud-corner { position: absolute; top: 14px; right: var(--gutter); display: flex; gap: 8px; pointer-events: auto; }
+.hud-corner { position: absolute; top: calc(14px + env(safe-area-inset-top, 0px)); right: calc(var(--gutter) + env(safe-area-inset-right, 0px)); display: flex; gap: 8px; pointer-events: auto; }
 .hud-btn {
   padding: .55em 1em;
   background: rgba(11, 11, 13, .6);
-  border: 1px solid rgba(217, 216, 210, .28);
+  border: 1px solid rgba(217, 216, 210, .5);
   font-family: var(--j);
   font-size: .78rem;
   color: var(--moon);
@@ -937,11 +940,11 @@ main > .colophon {
 @media (max-width: 760px) {
   .journal-frame { grid-template-columns: 1fr; grid-template-rows: auto auto 1fr; }
   .journal-nav { padding: .7rem var(--gutter); border-right: 0; border-bottom: 1px solid var(--rule); }
-  .journal-nav ol { display: flex; gap: 0 1.2rem; overflow-x: auto; white-space: nowrap; }
+  .journal-nav ol { display: flex; gap: 0 1.2rem; overflow-x: auto; white-space: nowrap; -webkit-mask-image: linear-gradient(90deg, #000 88%, transparent); mask-image: linear-gradient(90deg, #000 88%, transparent); }
   .journal-nav button { width: auto; font-size: .9rem; }
   .journal-nav .locked { padding: .3em 0; }
-  .hud-sub { bottom: 22vh; }
-  .hud-prompt { bottom: 12vh; }
+  .hud-sub { bottom: calc(12vh + 5rem + env(safe-area-inset-bottom, 0px)); }
+  .hud-prompt { bottom: calc(12vh + env(safe-area-inset-bottom, 0px)); }
 }
 
 /* ---------- small screens ---------- */
@@ -981,17 +984,18 @@ main > .colophon {
 .loading-text { margin: 0; font-size: .78rem; color: rgba(217, 216, 210, .6); font-variant-numeric: tabular-nums; }
 .hud-rec {
   position: absolute;
-  left: var(--gutter); top: 16px;
+  left: calc(var(--gutter) + env(safe-area-inset-left, 0px)); top: calc(16px + env(safe-area-inset-top, 0px));
   display: flex; align-items: center; gap: .6em;
   margin: 0;
   font-size: .78rem;
   letter-spacing: .1em;
-  color: rgba(217, 216, 210, .7);
+  color: rgba(217, 216, 210, .8);
+  text-shadow: 0 1px 6px #000, 0 0 2px #000;
   font-variant-numeric: tabular-nums;
 }
 .rec-dot { width: .6em; height: .6em; border-radius: 50%; background: #e0352b; animation: rec 1.2s steps(2) infinite; }
-.hud-corner { top: 12px; }
-@media (max-width: 640px) { .hud-rec { top: auto; bottom: 44px; } .hud-corner { flex-wrap: wrap; justify-content: end; max-width: 60vw; } }
+.hud-corner { top: calc(12px + env(safe-area-inset-top, 0px)); }
+@media (max-width: 640px) { .hud-rec { top: auto; bottom: calc(44px + env(safe-area-inset-bottom, 0px)); } .hud-corner { flex-wrap: wrap; justify-content: end; max-width: 60vw; } }
 
 /* ---------- X. Tom's jokes, XII. the rope ---------- */
 

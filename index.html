@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Ash Tree Lane · a retelling of House of Leaves</title>
 <meta name="description" content="Walk through the house on Ash Tree Lane and bring the story out. An unofficial retelling of Mark Z. Danielewski's House of Leaves.">
 <meta property="og:title" content="Ash Tree Lane">
@@ -64,12 +64,12 @@
     <p class="loading-text" data-load-text>The house is loading</p>
   </div>
   <div class="veil" data-veil hidden><p>Click to go on</p></div>
-  <div class="card" data-card hidden></div>
+  <div class="card" data-card role="status" hidden></div>
 </section>
 
 </main>
 
-<aside class="journal" id="journal" hidden aria-label="The journal">
+<aside class="journal" id="journal" role="dialog" aria-modal="true" hidden aria-label="The journal">
   <div class="journal-frame">
     <header class="journal-head">
       <span class="journal-title">The journal</span>
@@ -81,7 +81,7 @@
   </div>
 </aside>
 
-<template id="book">
+<div class="book" id="book">
 <section class="edition voice-editors" id="edition" data-title="A note on this edition">
   <h2 class="edition-title">A note on this edition</h2>
   <p>This is not the book. It is a retelling of one, in new words, by a reader who could not stop thinking about it.</p>
@@ -105,7 +105,7 @@
 </section>
 
 <section class="chapter" id="ch1" data-title="I. Ash Tree Lane">
-  <h2 class="ch-head"><span class="ch-num">I</span><span class="ch-title">Ash Tree Lane</span></h2>
+  <h2 class="ch-head"><span class="ch-num">I</span><span class="sr-only">. </span><span class="ch-title">Ash Tree Lane</span></h2>
   <p><cite>The Navidson Record</cite> begins as the least remarkable film imaginable: a family moving house.</p>
   <p>Will Navidson had spent most of his adult life inside other people’s disasters. As a photojournalist he had gone to famines and wars, and one of his photographs had won him the Pulitzer Prize. By the time the film begins, he wants to stop. He buys a house on Ash Tree Lane, in the Virginia countryside, and moves there with Karen Green, a former model, and their two children, Chad and Daisy. Will and Karen are not married. Everyone who knew them agrees that they loved each other. Nearly everyone also agrees that love had not yet made either of them stay.</p>
   <p>Navidson’s plan is modest, even touching. He will document the ordinary. He mounts Hi8 cameras in the rooms and keeps a handheld with him, so that the house can record a family learning to live in it. What he wanted was a film about putting down roots.<sup><a class="ref" href="#n1">1</a></sup></p>
@@ -125,7 +125,7 @@
 </section>
 
 <section class="chapter" id="ch2" data-title="II. A quarter of an inch">
-  <h2 class="ch-head"><span class="ch-num">II</span><span class="ch-title">A quarter of an inch</span></h2>
+  <h2 class="ch-head"><span class="ch-num">II</span><span class="sr-only">. </span><span class="ch-title">A quarter of an inch</span></h2>
   <p>The first anomaly is so small that the film nearly misses it.</p>
   <p>The family comes home from a few days away to find a door where there had been none: a plain door in the wall between the master bedroom and the children’s room, opening onto a narrow space like a closet. It is not sinister. It is simply new. Nobody installed it. Nobody can say when it arrived.</p>
   <p>Navidson does what a photographer does with a mystery. He measures it. He measures the inside of the house, then the outside, then the inside again, and then everything once more. The figures do not agree. The house is larger on the inside than on the outside by a quarter of an inch.<sup><a class="ref" href="#n4">4</a></sup></p>
@@ -148,7 +148,7 @@
 </section>
 
 <section class="chapter" id="ch3" data-title="III. The hallway">
-  <h2 class="ch-head"><span class="ch-num">III</span><span class="ch-title">The hallway</span></h2>
+  <h2 class="ch-head"><span class="ch-num">III</span><span class="sr-only">. </span><span class="ch-title">The hallway</span></h2>
   <p>Then, one day, the living room has another door.</p>
   <p>It is a doorway in a wall that should open onto the yard. Beyond it, where the yard should be, a hallway runs away into the dark. Its walls are smooth and ash-gray. There are no windows, no light fixtures, no switches, no molding, no mark of any tool. It is cold inside, a steady cold that has nothing to do with the season. And it is far longer than the house is wide.</p>
   <p>The first footage of it, which circulated on videotape long before the full film, is known as <cite>The Five and a Half Minute Hallway</cite>.<sup><a class="ref" href="#n6">6</a></sup> Much of what people believe about the Record comes from those few minutes: a door that opens onto nowhere, a family standing at its edge, a flashlight beam that finds no end.</p>
@@ -169,7 +169,7 @@
 </section>
 
 <section class="chapter" id="karen" data-title="IV. Karen">
-  <h2 class="ch-head"><span class="ch-num">IV</span><span class="ch-title">Karen</span></h2>
+  <h2 class="ch-head"><span class="ch-num">IV</span><span class="sr-only">. </span><span class="ch-title">Karen</span></h2>
   <p>Before the film is about a house, it is about a woman who does not like closed doors.</p>
   <p>Karen Green was a model for most of her twenties, the kind whose face people know without knowing her name. She left it without regret. What she kept from those years was a habit of being looked at, and a way of holding still under a lens that Navidson, who had spent his life behind one, found harder to read than any war. She would not marry him. She said it was not the right time, and then she went on saying it, year after year, while they raised two children together.<sup><a class="ref" href="#n8">8</a></sup></p>
   <aside class="note" id="n8" data-voice="zampano" data-num="8">
@@ -192,7 +192,7 @@
 </section>
 
 <section class="chapter" id="explorations" data-title="V. Explorations A to 3">
-  <h2 class="ch-head"><span class="ch-num">V</span><span class="ch-title">Explorations A to 3</span></h2>
+  <h2 class="ch-head"><span class="ch-num">V</span><span class="sr-only">. </span><span class="ch-title">Explorations A to 3</span></h2>
   <p>The film numbers the trips into the hallway, and the numbering is the first sign that the house is winning.</p>
   <p>Exploration A is Navidson’s own, and it has a letter instead of a number because nobody yet thought of it as the first of anything. He goes in with a camera and a flashlight while Tom and Reston wait at the door with a radio. The hallway does not stay still for him: it branches, it lengthens, a wall arrives where there was none, and for a while the doorway behind him is simply gone. Then it is there again, a small warm rectangle a long way off. He comes out talking too fast, and Tom, who will not yet set foot in the place, pours him a drink he does not take.</p>
   <p>Explorations 1, 2 and 3 are Holloway’s, the professional Navidson hires to go in his place, and they are made the way a professional makes them: provisioned, radioed, timed. At the door, Navidson keeps a log of what the radio describes, and Reston reads the logs against each other, and they do not agree. A room that was forty feet across on the first trip is a hundred on the second and is not there on the third.<sup><a class="ref" href="#n12">12</a></sup> The corridor is always longer coming back.</p>
@@ -213,7 +213,7 @@
 </section>
 
 <section class="chapter" id="ch4" data-title="VI. Echoes">
-  <h2 class="ch-head"><span class="ch-num">VI</span><span class="ch-title">Echoes</span></h2>
+  <h2 class="ch-head"><span class="ch-num">VI</span><span class="sr-only">. </span><span class="ch-title">Echoes</span></h2>
   <p>Zampanò interrupts the story here for a long meditation on echoes, and it is not the digression it appears to be.</p>
   <div class="echoes">
     <p>An echo is the sound of a space answering. Clap your hands in a cathedral and the cathedral tells you how large it is. Clap in a closet and the closet says almost nothing. In the hallway, the explorers call out, and the dark does not answer, or answers late, or answers with something that is not quite their voice.</p>
@@ -233,7 +233,7 @@
 </section>
 
 <section class="chapter" id="ch5" data-title="VII. Holloway">
-  <h2 class="ch-head"><span class="ch-num">VII</span><span class="ch-title">Holloway</span></h2>
+  <h2 class="ch-head"><span class="ch-num">VII</span><span class="sr-only">. </span><span class="ch-title">Holloway</span></h2>
   <p>Navidson keeps his promise the way people keep promises they resent. He does not go into the hallway himself. He hires someone to go instead.</p>
   <p>Holloway Roberts is a professional hunter and explorer, a man who has built a career on going first. He brings two men who have worked with him for years, Jed Leeder and Kirby Hook, whom everyone calls Wax. They come equipped for cold and dark: cameras, halogen lamps, cold-weather gear, and a radio to stay in touch with Navidson, Tom and Reston at the door.</p>
   <p>A spool of fishing line is tied off at the doorway, and Holloway carries the spool. As long as the line holds, the way back is simple.</p>
@@ -249,7 +249,7 @@
 </section>
 
 <section class="chapter" id="samples" data-title="VIII. Older than the house">
-  <h2 class="ch-head"><span class="ch-num">VIII</span><span class="ch-title">Older than the house</span></h2>
+  <h2 class="ch-head"><span class="ch-num">VIII</span><span class="sr-only">. </span><span class="ch-title">Older than the house</span></h2>
   <p>An engineer’s answer to a wall is a sample of it.</p>
   <p>Navidson takes samples from the hallway walls, a little gray matter chipped from a surface that seems to give up nothing else, and Reston, who knows people at the university, has them sent to a laboratory with a note asking for an age and a composition and nothing else.<sup><a class="ref" href="#n18">18</a></sup></p>
   <aside class="note" id="n18" data-voice="johnny" data-num="18">
@@ -266,7 +266,7 @@
 </section>
 
 <section class="chapter chapter-maze" id="ch6" data-title="IX. The labyrinth">
-  <h2 class="ch-head"><span class="ch-num">IX</span><span class="ch-title">The labyrinth</span></h2>
+  <h2 class="ch-head"><span class="ch-num">IX</span><span class="sr-only">. </span><span class="ch-title">The labyrinth</span></h2>
   <p>Here Zampanò’s text begins to come apart, and so does the page.</p>
   <p>He writes about labyrinths. About Daedalus, who built the labyrinth of Crete so well that he could barely find his own way out of it.<sup><a class="ref" href="#n20">20</a></sup> About King Minos, who hid inside it the creature his queen had borne, half man and half bull, and fed it with young men and women sent from Athens. About Theseus, and the thread Ariadne gave him, which is only fishing line in a more beautiful story.</p>
   <aside class="note" id="n20" data-voice="zampano" data-num="20">
@@ -307,19 +307,19 @@
       </aside>
     </div>
 
-    <p class="descent" aria-label="and down, and down, and down, and down, and down, and down"><span style="--i:0">and</span><span style="--i:1">down,</span><span style="--i:2">and</span><span style="--i:3">down,</span><span style="--i:4">and</span><span style="--i:5">down,</span><span style="--i:6">and</span><span style="--i:7">down,</span><span style="--i:8">and</span><span style="--i:9">down,</span><span style="--i:10">and</span><span style="--i:11">down</span></p>
+    <p class="descent" role="img" aria-label="and down, and down, and down, and down, and down, and down"><span style="--i:0">and</span><span style="--i:1">down,</span><span style="--i:2">and</span><span style="--i:3">down,</span><span style="--i:4">and</span><span style="--i:5">down,</span><span style="--i:6">and</span><span style="--i:7">down,</span><span style="--i:8">and</span><span style="--i:9">down,</span><span style="--i:10">and</span><span style="--i:11">down</span></p>
   </div>
 </section>
 
 <section class="chapter" id="tom" data-title="X. Tom’s story">
-  <h2 class="ch-head"><span class="ch-num">X</span><span class="ch-title">Tom’s story</span></h2>
+  <h2 class="ch-head"><span class="ch-num">X</span><span class="sr-only">. </span><span class="ch-title">Tom’s story</span></h2>
   <p>When the fourth exploration goes wrong and his brother goes down after it, the only person in the hallway who is not lost is Tom.</p>
   <p>He is there because the radio will not reach from the bottom of the stairs to the house. Someone has to stay at the top of the staircase, in the Great Hall, and relay what comes up from below to the people at the door. Tom stays. He is the twin who never went anywhere, the one who fixes things and tells jokes and has been sober, a day at a time, for years, and he sets a lantern and a thermos and a folding chair and a tape recorder at the lip of the well and sits down in the dark to wait.<sup><a class="ref" href="#n23">23</a></sup></p>
   <aside class="note" id="n23" data-voice="zampano" data-num="23">
     <p>The section of the Record devoted to Tom is known among its admirers simply as “Tom’s Story,” and it is the only part of the film with a laugh track, because the laugh is Tom’s own.</p>
   </aside>
   <p>He talks. He talks to the recorder, to Reston on the radio, to the wall, to the growl when it comes, which is often. He addresses it as if it were a neighbor who had complained about the noise. He tells it about his brother. He tells it jokes, most of them old, some of them not very good, and he tells them well, with the timing of a man who has spent years making a room forgive him.</p>
-  <div class="jokes voice-johnny" aria-label="Some of what he said, as Johnny copied it out">
+  <div class="jokes voice-johnny" role="group" aria-label="Some of what he said, as Johnny copied it out">
     <p>A man walks into a house. That is the whole joke. It just takes a while.</p>
     <p>Knock knock. Who’s there. Nobody. Nobody who. Exactly.</p>
     <p>My brother says this hallway is a metaphor. I said, for what. He said he’d let me know when he got to the end of it.</p>
@@ -337,7 +337,7 @@
 </section>
 
 <section class="chapter" id="ch7" data-title="XI. Exploration #4">
-  <h2 class="ch-head"><span class="ch-num">XI</span><span class="ch-title">Exploration #4</span></h2>
+  <h2 class="ch-head"><span class="ch-num">XI</span><span class="sr-only">. </span><span class="ch-title">Exploration #4</span></h2>
   <p>The fourth exploration is meant to last more than a week. Holloway provisions it the way he would provision an expedition into real wilderness: food, water, fuel, spares of everything. He also brings a gun.</p>
   <p>They go down the staircase farther than anyone has gone, leaving caches of supplies along the way for the climb back. Days in, they turn around. They find the caches torn open and scattered. The neon markers they left to find their way have been ripped apart. There is no sign of what did it. There is, as always, nothing in the house but them.</p>
   <div class="narrowing">
@@ -367,7 +367,7 @@
 </section>
 
 <section class="chapter" id="rescue" data-title="XII. The rescue">
-  <h2 class="ch-head"><span class="ch-num">XII</span><span class="ch-title">The rescue</span></h2>
+  <h2 class="ch-head"><span class="ch-num">XII</span><span class="sr-only">. </span><span class="ch-title">The rescue</span></h2>
   <p>What they hear over the radio, at the door, is a gunshot, and then a man saying that he is sorry, and then a long time of nothing.</p>
   <p>Navidson goes in. Reston goes in after him, in the chair, which is a thing the film shows and does not explain: a man in a wheelchair on a spiral staircase, going down one step at a time on his hands, the chair lowered ahead of him on a rope. Tom stays at the top of the stairs with the radio and the rope. The two of them go down together, for days, to where the voices are.<sup><a class="ref" href="#n27">27</a></sup></p>
   <aside class="note" id="n27" data-voice="zampano" data-num="27">
@@ -391,7 +391,7 @@
 </section>
 
 <section class="chapter" id="ch8" data-title="XIII. What the house took">
-  <h2 class="ch-head"><span class="ch-num">XIII</span><span class="ch-title">What the house took</span></h2>
+  <h2 class="ch-head"><span class="ch-num">XIII</span><span class="sr-only">. </span><span class="ch-title">What the house took</span></h2>
   <p>The house does not stay in its hallway.</p>
   <div class="torn">
     <p>After the rescue it begins to change the rooms the family lives in. Doorways open where there were walls. The growl comes up through the floorboards. And then, all at once, the house moves. The gray space tears into the living quarters, floors drop away, rooms stretch and split, and the Navidsons run for their lives through a home that is coming apart around them.</p>
@@ -406,7 +406,7 @@
 </section>
 
 <section class="chapter" id="ch9" data-title="XIV. What some have thought">
-  <h2 class="ch-head"><span class="ch-num">XIV</span><span class="ch-title">What some have thought</span></h2>
+  <h2 class="ch-head"><span class="ch-num">XIV</span><span class="sr-only">. </span><span class="ch-title">What some have thought</span></h2>
   <p>Karen does something no one expects. She makes films.</p>
   <p>Separated from Navidson, far from the house, she takes the footage and begins to cut it herself. She shows it to people whose work is to know things, writers and critics and scholars, some famous and some not, and she films them watching.<sup><a class="ref" href="#n31">31</a></sup> Each of them explains the house in the language of their own trade. Every explanation is fluent, and none of them is enough. She calls it <cite>What Some Have Thought</cite>.</p>
   <aside class="note" id="n31" data-voice="editors" data-num="31">
@@ -424,7 +424,7 @@
 </section>
 
 <section class="chapter" id="ch10" data-title="XV. Exploration #5">
-  <h2 class="ch-head"><span class="ch-num">XV</span><span class="ch-title">Exploration #5</span></h2>
+  <h2 class="ch-head"><span class="ch-num">XV</span><span class="sr-only">. </span><span class="ch-title">Exploration #5</span></h2>
   <p>Navidson goes back in alone.</p>
   <p>This time he has promised no one anything. He takes supplies, his cameras, and a book to read. He goes deeper than Holloway went, past every place where the others turned back, until the staircase and the walls and even the floor seem to give out, and he is simply suspended in a dark with no dimensions at all.<sup><a class="ref" href="#n32">32</a></sup></p>
   <aside class="note" id="n32" data-voice="johnny" data-num="32">
@@ -440,7 +440,7 @@
 </section>
 
 <section class="chapter" id="ch11" data-title="XVI. Vermont">
-  <h2 class="ch-head"><span class="ch-num">XVI</span><span class="ch-title">Vermont</span></h2>
+  <h2 class="ch-head"><span class="ch-num">XVI</span><span class="sr-only">. </span><span class="ch-title">Vermont</span></h2>
   <p>Karen goes into the house.</p>
   <p>The woman who could not bear a closed room walks into the dark of Ash Tree Lane to look for him. And she finds him, alive, starved, badly frostbitten and hurt, in a place that should have kept him.</p>
   <p>They come out together. They leave Virginia. In Vermont, at last, they marry.</p>
@@ -595,7 +595,7 @@
   <p class="colophon-meta">Written and built by hand in HTML, CSS and JavaScript, with three.js for the house. No cookies, no tracking. What you find is kept only in your own browser, so the house can remember you. The source is on <a href="https://github.com/Pazificateur69/ash-tree-lane">GitHub</a>.</p>
   <p class="colophon-meta">The house is built from free things. Materials by ambientCG and Poly Haven (CC0); the night sky by Greg Zaal, Poly Haven (CC0). Models from the Khronos glTF sample assets: Lantern, WaterBottle, ToyCar (Microsoft), SheenChair (Eric Chadwick, Wayfair), AntiqueCamera (UX3D), a teacup (Poly Haven) and a vase (Eric Chadwick, Rico Cilliers), all CC0; ChairDamaskPurplegold, GlassHurricaneCandleHolder and GlassBrokenWindow by Eric Chadwick for Wayfair, LightsPunctualLamp by Teresa Gonzalez Viegas and SheenWoodLeatherSofa by the Darmstadt Graphics Group, CC BY 4.0. From Benedikt Bitterli’s rendering resources: the bedroom by SlykDrako (CC0), the radio, books, magazine and cushion of The White Room and the kitchen of Country Kitchen by Jay-Artist (CC BY 3.0). The tape recorder is a Sony TC-510-2 by Ilgis Fatykhov on Sketchfab (CC BY 4.0). Footsteps, creaks, doors and the page by Kenney (CC0); the wind by felix.blume and the timbers by Falcet (freesound, CC0); the summer night by Lisa Redfern (public domain). The labels, the pages and the tags were made for this site.</p>
   </section>
-</template>
+</div>
 
 <div class="leaves" id="leaves"></div>
 

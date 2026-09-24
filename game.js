@@ -15,7 +15,7 @@
     get(k, d) { try { const v = localStorage.getItem('atl:' + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
     set(k, v) { try { localStorage.setItem('atl:' + k, JSON.stringify(v)); } catch (e) { /* private mode: nothing is kept */ } }
   };
-  const visits = store.get('visits', 0) + 1;
+  const visits = (Number.isFinite(store.get('visits', 0)) ? store.get('visits', 0) : 0) + 1;
   store.set('visits', visits);
   const hash = n => { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
   const rng = seed => () => {
@@ -81,11 +81,12 @@
      The journal: what you bring out of the house
      ================================================================ */
 
-  const BOOK = $('#book').content;
+  const BOOK = $('#book'); BOOK.remove(); // the book is in the page for readers without script; with script it is read from here
   const ORDER = ['edition', 'introduction', 'ch1', 'ch2', 'ch3', 'karen', 'explorations', 'ch4', 'ch5', 'samples', 'ch6', 'tom', 'ch7', 'rescue', 'ch8', 'ch9', 'ch10', 'ch11', 'letters', 'exhibits', 'index', 'colophon'];
   const FREE = ['edition', 'colophon'];
-  const TITLES = Object.fromEntries(ORDER.map(id => [id, BOOK.getElementById(id).dataset.title]));
-  const found = new Set(store.get('found', FREE));
+  const TITLES = Object.fromEntries(ORDER.map(id => [id, BOOK.querySelector('#' + id).dataset.title]));
+  const savedFound = store.get('found', FREE);
+  const found = new Set(Array.isArray(savedFound) ? savedFound.filter(id => ORDER.includes(id)) : FREE); // whatever was stored, the script must still run
   let readAll = false;
   const journal = $('#journal'), jPage = $('[data-page]', journal), jContents = $('[data-contents]', journal), jCount = $('[data-count]', journal);
   const has = id => readAll || found.has(id);
@@ -105,15 +106,16 @@
         li.append(b);
       } else {
         li.className = 'locked';
-        li.innerHTML = '<span aria-label="Not found yet">· · · · ·</span>';
+        li.innerHTML = '<span class="sr-only">Not found yet</span><span aria-hidden="true">· · · · ·</span>';
       }
       jContents.append(li);
     }
     const total = ORDER.length - FREE.length;
     jCount.textContent = `${Math.min(n, total)} of ${total} found`;
+    if (matchMedia('(max-width: 760px)').matches) jContents.querySelector('[aria-current]')?.scrollIntoView({ inline: 'center', block: 'nearest' });
   }
   function showPage(id) {
-    const src = BOOK.getElementById(id);
+    const src = BOOK.querySelector('#' + id);
     jPage.innerHTML = '';
     const clone = src.cloneNode(true);
     jPage.append(clone);
@@ -138,7 +140,9 @@
   }
   function openJournal(id) {
     Sound.play('page', { gain: .45, room: false, detune: .1 });
+    journal.opener = document.activeElement;
     journal.hidden = false;
+    $('main').inert = true;
     document.body.classList.add('journal-open');
     game.pause();
     showPage(id || ORDER.find(has));
@@ -147,8 +151,12 @@
     Sound.play('page', { gain: .35, room: false, rate: 1.1, detune: .1 });
     closeAllLeaves();
     journal.hidden = true;
+    $('main').inert = false;
     document.body.classList.remove('journal-open');
     const id = jPage.dataset.id;
+    const o = journal.opener;
+    const back = o && o !== document.body && o.isConnected && !o.closest('[hidden]') ? o : game.started ? hud.journal : $('[data-read]');
+    back?.focus({ preventScroll: true });
     game.resume();
     if (id && pendingAfterRead.has(id)) { const fn = pendingAfterRead.get(id); pendingAfterRead.delete(id); fn(); }
   }
@@ -175,15 +183,15 @@
     const leaf = document.createElement('section');
     leaf.className = 'leaf';
     leaf.dataset.voice = src.dataset.voice;
-    leaf.setAttribute('role', 'dialog');
+    leaf.setAttribute('role', 'dialog'); leaf.setAttribute('aria-modal', 'true');
     leaf.setAttribute('aria-label', `Note ${src.dataset.num}, ${VOICE[src.dataset.voice]}`);
     leaf.style.setProperty('--i', i);
     leaf.style.setProperty('--tilt', ((((i * 5 + +src.dataset.num * 3) % 7) - 3) * .32).toFixed(2) + 'deg');
     const head = document.createElement('header');
     head.className = 'leaf-head';
-    head.innerHTML = '<span class="leaf-num"></span><span class="leaf-voice"></span><button class="leaf-close" type="button">Close</button>';
-    head.children[0].textContent = src.dataset.num;
-    head.children[1].textContent = VOICE[src.dataset.voice];
+    head.innerHTML = '<span class="leaf-num"></span><span class="sr-only">, </span><span class="leaf-voice"></span><button class="leaf-close" type="button">Close</button>';
+    head.querySelector('.leaf-num').textContent = src.dataset.num;
+    head.querySelector('.leaf-voice').textContent = VOICE[src.dataset.voice];
     const body = src.cloneNode(true);
     body.removeAttribute('id');
     body.className = 'leaf-body';
@@ -191,6 +199,8 @@
     leaf.append(head, body);
     leaves.append(leaf);
     leaves.classList.add('open');
+    for (const o of opened) o.leaf.inert = true; // only the top leaf can be read
+    $('.journal-frame').inert = true;
     opened.push({ leaf, ref });
     requestAnimationFrame(() => requestAnimationFrame(() => leaf.classList.add('in')));
     head.querySelector('.leaf-close').focus({ preventScroll: true });
@@ -200,7 +210,8 @@
     if (!o) return;
     o.leaf.classList.remove('in');
     setTimeout(() => o.leaf.remove(), 450);
-    if (!opened.length) leaves.classList.remove('open');
+    if (!opened.length) { leaves.classList.remove('open'); $('.journal-frame').inert = false; }
+    else opened[opened.length - 1].leaf.inert = false;
     if (restore && o.ref.isConnected) o.ref.focus({ preventScroll: true });
   }
   const closeAllLeaves = () => { while (opened.length) closeLeaf(opened.length === 1); };
@@ -264,6 +275,7 @@
     if (e.key === 'Escape') {
       if (opened.length) { e.preventDefault(); closeLeaf(); }
       else if (!journal.hidden) { e.preventDefault(); closeJournal(); }
+      else if (!hud.card.hidden && hud.card.onclick) { e.preventDefault(); hud.card.onclick(); }
     }
   });
 
@@ -478,8 +490,9 @@
   syncSound();
   const syncJournalButton = () => { hud.journal.textContent = `Journal · ${foundCount()}`; };
   syncJournalButton();
-  const Q = { low: store.get('low', touch) };
-  const syncQuality = () => { hud.quality.textContent = Q.low ? 'Detail: low' : 'Detail: high'; hud.quality.setAttribute('aria-pressed', String(!Q.low)); };
+  const savedLow = store.get('low', null);
+  const Q = { low: typeof savedLow === 'boolean' ? savedLow : touch };
+  const syncQuality = () => { hud.quality.textContent = Q.low ? 'Detail: low' : 'Detail: high'; };
   syncQuality();
 
   /* ================================================================
@@ -523,7 +536,13 @@
     document.body.classList.add('in-house');
     const [THREE, { EffectComposer }, { RenderPass }, { ShaderPass }, { UnrealBloomPass }, { OutputPass }, { GLTFLoader }, { RGBELoader }, { mergeGeometries }] = libs;
     try { buildWorld({ THREE, EffectComposer, RenderPass, ShaderPass, UnrealBloomPass, OutputPass, GLTFLoader, RGBELoader, mergeGeometries }); }
-    catch (e) { console.error(e); hud.loadText.textContent = 'The house would not stand: ' + e.message + '. Reload the page, or read the journal.'; hud.loadBar.style.width = '0'; }
+    catch (e) {
+      console.error(e);
+      $('#game').hidden = true; $('.threshold').hidden = false; document.body.classList.remove('in-house'); game.started = false;
+      btn.disabled = false; btn.textContent = 'Open the door';
+      const vn = $('[data-visit-note]');
+      if (vn) { vn.hidden = false; vn.textContent = 'The door will not open: ' + String(e && e.message || e).replace(/\.+$/, '') + '. You can still read the journal.'; }
+    }
   }
 
   const HALL_BEATS = [
@@ -796,16 +815,16 @@
     wall(0, 0, 14, 0, [[2.3, 3.7, 'win'], [10.3, 11.7, 'win']], 'north');
     wall(0, 13, 14, 13, [[2, 3], [4.2, 5.4, 'win'], [9.3, 10.7, 'win']], 'south');
     wall(0, 0, 0, 13, [[1.3, 2.7, 'win'], [6.8, 8.2, 'win']], 'west');
-    wall(14, 0, 14, 13, [[8, 9], [1.3, 2.7, 'win'], [10.3, 11.9, 'win']], 'east');
-    const hallwayPlug = plug(14, 8, 14, 9);
+    wall(14, 0, 14, 13, [[7.92, 9.08], [1.3, 2.7, 'win'], [10.3, 11.9, 'win']], 'east');
+    const hallwayPlug = plug(14, 7.92, 14, 9.08);
     // interior
-    wall(0, 4, 14, 4, [[2.5, 3.5], [10, 11]], 'bedrooms');
+    wall(0, 4, 14, 4, [[2.42, 3.58], [9.92, 11.08]], 'bedrooms'); // doorways a metre clear once the wall pieces overlap them
     wall(6.5, 0, 6.5, 4, [[1.5, 2.5]], 'closet-w');
     const closetPlug = plug(6.5, 1.5, 6.5, 2.5);
     wall(7.5, 0, 7.5, 4, [], 'closet-e');
-    wall(0, 5.3, 14, 5.3, [[4, 5], [9, 10]], 'hall');
-    wall(6, 5.3, 6, 13, [[1.2, 3.2], [5.7, 6.7]], 'kitchen-living');
-    wall(0, 10.5, 6, 10.5, [[2, 3]], 'foyer');
+    wall(0, 5.3, 14, 5.3, [[3.92, 5.08], [8.92, 10.08]], 'hall');
+    wall(6, 5.3, 6, 13, [[1.2, 3.2], [5.62, 6.78]], 'kitchen-living');
+    wall(0, 10.5, 6, 10.5, [[1.92, 3.08]], 'foyer');
     // skirting and door frames, the small carpentry that makes a wall a wall
     for (const [x1, z1, x2, z2] of [[.08, .08, 13.92, .08], [.08, 12.92, 13.92, 12.92], [.08, .08, .08, 12.92], [13.92, .08, 13.92, 12.92]]) {
       const alongX = z1 === z2, len = alongX ? x2 - x1 : z2 - z1;
@@ -857,16 +876,16 @@
     model('leather_sofa', { size: 2.4, axis: 'x', x: 11.6, z: 6.2, ry: 0 }); block(11.6, 6.2, 2.4, 1); // clear of the door in the hall wall at x 9..10
     model('cushion', { size: .42, x: 10.65, y: .42, z: 6.22, ry: .35 });
     model('rug', { size: 2.3, axis: 'x', x: 11.6, y: .004, z: 8.2, cast: false });
-    model('sheen_chair', { size: .72, x: 12.9, z: 9.6, ry: -2.1 }); block(12.9, 9.6, .8, .8);
-    box(1.1, .04, .6, M.wood, 11.6, .4, 7.9, 1); for (const [dx, dz] of [[-.5, -.25], [.5, -.25], [-.5, .25], [.5, .25]]) box(.04, .4, .04, M.wood, 11.6 + dx, .2, 7.9 + dz); block(11.6, 7.9, 1.1, .6);
-    model('coffee_mug', { size: .1, x: 11.25, y: .42, z: 7.78, ry: .8 });
-    model('magazine', { size: .33, axis: 'x', x: 11.55, y: .421, z: 8.0, ry: .2, cast: false });
-    model('vase_flowers', { size: .22, x: 11.98, y: .42, z: 7.82 });
+    model('sheen_chair', { size: .72, x: 12.9, z: 10.1, ry: -2.1 }); block(12.9, 10.1, .8, .8);
+    box(1.1, .04, .6, M.wood, 11.6, .4, 7.55, 1); for (const [dx, dz] of [[-.5, -.25], [.5, -.25], [-.5, .25], [.5, .25]]) box(.04, .4, .04, M.wood, 11.6 + dx, .2, 7.55 + dz); block(11.6, 7.55, 1.1, .6); // close to the sofa: the way across the room runs north of the pit
+    model('coffee_mug', { size: .1, x: 11.25, y: .42, z: 7.43, ry: .8 });
+    model('magazine', { size: .33, axis: 'x', x: 11.55, y: .421, z: 7.65, ry: .2, cast: false });
+    model('vase_flowers', { size: .22, x: 11.98, y: .42, z: 7.47 });
     model('glass_hurricane_candle_holder', { size: .26, x: 10.15, y: .45, z: 12.5 });
     model('books', { size: .5, x: 10.85, y: .45, z: 12.55, ry: Math.PI / 2 });
     model('curtain', { size: 2.3, x: 13.62, z: 10.15, ry: Math.PI / 2, cast: false });
     model('antique_camera', { size: 1.55, x: 12.6, z: 11.6, ry: -2.4 }); block(12.6, 11.6, .7, .7);
-    const floorLamp = model('lights_punctual_lamp', { size: 1.75, x: 7.1, z: 12.2, ry: .6 }); block(7.1, 12.2, .5, .5);
+    const floorLamp = model('lights_punctual_lamp', { size: 1.75, x: 6.75, z: 12.55, ry: .6 }); block(6.75, 12.55, .5, .5);
     model('plant_small', { size: .95, x: 13.4, z: 5.9, cast: false }); block(13.4, 5.9, .6, .6);
     // the television, on a low unit, facing the couch
     box(.9, .45, .45, M.wood, 10.5, .225, 12.5, 1); block(10.5, 12.5, .9, .45);
@@ -884,14 +903,14 @@
     const screen = new THREE.Mesh(new THREE.PlaneGeometry(.5, .38), screenMat); screen.position.set(10.5, .72, 12.245); screen.rotation.y = Math.PI; scene.add(screen);
     const tvSrc = source(10.5, 1, 11.8, 0xbfd0ff, 0, 4);
     // moving boxes
-    solid(box(.6, .6, .6, M.cardboard, 7.4, .3, 12.2), .6, .6); box(.55, .55, .55, M.cardboard, 7.4, .875, 12.2).rotation.y = .2; box(.6, .6, .6, M.cardboard, 8.2, .3, 12.4).rotation.y = -.15; block(8.2, 12.4, .6, .6);
+    solid(box(.6, .6, .6, M.cardboard, 7.6, .3, 12.5), .6, .6); box(.55, .55, .55, M.cardboard, 7.6, .875, 12.5).rotation.y = .2; box(.6, .6, .6, M.cardboard, 8.2, .3, 12.4).rotation.y = -.15; block(8.2, 12.4, .6, .6);
     box(.5, .4, .5, M.cardboard, 8.9, .2, 12.5).rotation.y = .5;
 
     // kitchen
     model('cupboards', { size: 4.75, axis: 'z', x: .42, z: 7.9 }); block(.45, 7.9, .75, 4.75); // the run along the west wall of the original kitchen
     model('worktops', { size: 4.75, axis: 'z', x: .5, y: .9, z: 7.9, cast: false });
-    model('cooker', { size: .88, axis: 'x', x: 3.75, z: 5.85, ry: Math.PI }); block(3.75, 5.85, .9, 1.1);
-    model('hood', { size: .49, axis: 'x', x: 3.75, y: 1.5, z: 5.75, ry: Math.PI });
+    model('cooker', { size: .88, axis: 'x', x: 3.45, z: 5.85, ry: Math.PI }); block(3.45, 5.85, .9, 1.1);
+    model('hood', { size: .49, axis: 'x', x: 3.45, y: 1.5, z: 5.75, ry: Math.PI });
     model('microwave', { size: .6, axis: 'x', x: .5, y: .92, z: 9.7, ry: Math.PI / 2 });
     model('plant_small', { size: .5, x: .45, y: .92, z: 6.3, cast: false });
     solid(box(.75, 1.75, .7, M.white, 5.5, .875, 5.75), .75, .7); box(.02, .3, .02, M.metal, 5.14, 1.1, 5.55);      // the fridge and its handle
@@ -1117,7 +1136,7 @@
     pickup('tape1', 7.4, 1.16, 12.2, tapeBuild(M.labelTape1), { label: 'A Hi8 tape. In marker: ASH TREE LANE, 1.', chapter: 'ch1' });
     pickup('tape_measure', 1.1, .94, 8.6, g => { add(g, mesh(new THREE.BoxGeometry(.075, .07, .035), M.yellow), 0, .035, 0); add(g, mesh(new THREE.BoxGeometry(.4, .002, .016), M.paper), .25, .01, 0); add(g, mesh(new THREE.BoxGeometry(.012, .02, .02), M.metal), .45, .01, 0); }, { label: 'A tape measure, left open on the counter.', chapter: 'ch2' });
     pickup('tape2', 7, .02, 2.6, tapeBuild(M.labelTape2), { label: 'A Hi8 tape. In marker: 5½.', chapter: 'ch3' });
-    pickup('photo', 1.5, .345, .47, g => { const p = add(g, mesh(new THREE.PlaneGeometry(.1, .05), M.tagPhoto), 0, .003, 0); p.rotation.x = -Math.PI / 2; p.rotation.z = -.4; p.material.side = THREE.DoubleSide; add(g, mesh(new THREE.BoxGeometry(.11, .002, .13), M.white), 0, .001, 0).rotation.y = -.4; }, { label: 'A photograph, face down. On the back, in pencil: K., 1989.', chapter: 'karen' });
+    pickup('photo', 3.7, .345, .49, g => { const p = add(g, mesh(new THREE.PlaneGeometry(.1, .05), M.tagPhoto), 0, .003, 0); p.rotation.x = -Math.PI / 2; p.rotation.z = -.4; p.material.side = THREE.DoubleSide; add(g, mesh(new THREE.BoxGeometry(.11, .002, .13), M.white), 0, .001, 0).rotation.y = -.4; }, { label: 'A photograph, face down. On the back, in pencil: K., 1989.', chapter: 'karen' });
     pickup('samples', 3.9, .77, 8.75, g => { const bag = add(g, mesh(new THREE.BoxGeometry(.14, .05, .1), new THREE.MeshStandardMaterial({ color: 0xcfd2d6, roughness: .3, transparent: true, opacity: .75 })), 0, .025, 0); bag.rotation.y = .3; add(g, mesh(new THREE.BoxGeometry(.11, .025, .08), M.ash), 0, .02, 0).rotation.y = .3; const tag = add(g, mesh(new THREE.PlaneGeometry(.09, .045), M.tagSample), .06, .004, .07); tag.rotation.x = -Math.PI / 2; tag.rotation.z = .9; tag.material.side = THREE.DoubleSide; }, { label: 'A specimen bag of gray dust, tagged in Reston’s hand.', chapter: 'samples' });
     pickup('front_door', 2.5, 1, 12.92, g => { add(g, mesh(boxUV(new THREE.BoxGeometry(1, 2.05, .06), 1, 2.05, .06, 1), M.wood), 0, 0, 0); for (const y of [.55, -.15, -.75]) add(g, mesh(new THREE.BoxGeometry(.7, .45, .012), M.wood), 0, y, .035); add(g, mesh(new THREE.SphereGeometry(.03, 10, 8), M.brass), .38, -.05, .05); add(g, mesh(new THREE.BoxGeometry(.06, .11, .01), M.brass), .38, -.2, .035); }, { label: 'The front door.', door: 'front', reach: 1.8 });
     block(2.5, 12.95, 1, .2);
@@ -1191,11 +1210,12 @@
 
     const P = { x: 3, z: 12.1, yaw: 0, pitch: 0, vx: 0, vz: 0, r: .3, bob: 0, walked: 0, stepAcc: 0, inMaze: false, region: 'house', lineOut: 0, deepest: 0 };
     const keys = new Set();
-    const KEYMAP = { KeyW: 'f', KeyZ: 'f', ArrowUp: 'f', KeyS: 'b', ArrowDown: 'b', KeyA: 'l', KeyQ: 'l', ArrowLeft: 'l', KeyD: 'r', ArrowRight: 'r', ShiftLeft: 'run', ShiftRight: 'run' };
+    const KEYMAP = { KeyW: 'f', KeyZ: 'f', ArrowUp: 'f', KeyS: 'b', ArrowDown: 'b', KeyA: 'l', KeyQ: 'l', KeyD: 'r', ArrowLeft: 'tl', ArrowRight: 'tr', PageUp: 'pu', PageDown: 'pd', ShiftLeft: 'run', ShiftRight: 'run' };
     addEventListener('keydown', e => {
       if (!game.started || game.ended) return;
       if (!journal.hidden || !$('#dark').hidden) return;
       if (KEYMAP[e.code]) { keys.add(KEYMAP[e.code]); e.preventDefault(); }
+      if ((e.code === 'Enter' || e.code === 'Space') && e.target.closest && e.target.closest('button, a, input')) return; // the control has it
       if (e.code === 'KeyE' || e.code === 'Enter' || e.code === 'Space') { if (target) { interact(target); e.preventDefault(); } }
       if (e.code === 'KeyJ') { openJournal(jPage.dataset.id); e.preventDefault(); }
     });
@@ -1221,7 +1241,7 @@
     const fingers = new Map();
     let stick = { dx: 0, dz: 0 };
     canvas.addEventListener('touchstart', e => {
-      for (const t of e.changedTouches) fingers.set(t.identifier, { x0: t.clientX, y0: t.clientY, x: t.clientX, y: t.clientY, move: t.clientX < innerWidth * .45 });
+      for (const t of e.changedTouches) fingers.set(t.identifier, { x0: t.clientX, y0: t.clientY, x: t.clientX, y: t.clientY, t0: performance.now(), move: t.clientX < innerWidth * .45 });
       e.preventDefault();
     }, { passive: false });
     canvas.addEventListener('touchmove', e => {
@@ -1233,7 +1253,14 @@
       }
       e.preventDefault();
     }, { passive: false });
-    const endTouch = e => { for (const t of e.changedTouches) { const f = fingers.get(t.identifier); if (f?.move) stick = { dx: 0, dz: 0 }; fingers.delete(t.identifier); } };
+    const endTouch = e => {
+      for (const t of e.changedTouches) {
+        const f = fingers.get(t.identifier); if (!f) continue;
+        if (f.move) stick = { dx: 0, dz: 0 };
+        if (performance.now() - f.t0 < 300 && Math.hypot(t.clientX - f.x0, t.clientY - f.y0) < 12 && target && !game.paused && !game.ended) interact(target); // a tap
+        fingers.delete(t.identifier);
+      }
+    };
     canvas.addEventListener('touchend', endTouch); canvas.addEventListener('touchcancel', endTouch);
     hud.prompt.addEventListener('click', () => { if (target) interact(target); });
     hud.quality.addEventListener('click', () => {
@@ -1299,7 +1326,7 @@
       pane.visible = false; model('glass_broken_window', { size: 1.25, x: 13.86, y: .93, z: 11.1, ry: Math.PI / 2, cast: false, onLoad: sc => sc.traverse(o => { if (o.isMesh && /glass/i.test(o.material.name || '')) { const m = o.material; m.transparent = true; m.opacity = .7; m.metalness = 0; m.roughness = .12; m.envMapIntensity = 2; m.emissive = new THREE.Color(0x9aa4b4); m.emissiveMap = m.map; m.emissiveIntensity = .55; m.alphaTest = .5; m.side = THREE.DoubleSide; m.needsUpdate = true; } }) }); // the cracks are drawn in the pane's texture: let them catch a little light of their own
       lamps[0].flicker = true; lamps[0].src.intensity = 2; lamps[0].bulb.visible = true;
       screenMat.uniforms.on.value = 1; tvSrc.intensity = 1.6;
-      const pit = box(3.2, .3, 2.6, M.black, 9.6, -.16, 10.2); solid(pit, 3.2, 2.6);
+      const pit = box(2.6, .3, 2.0, M.black, 9.4, -.16, 10.3); solid(pit, 2.6, 2.0); // leaves a way round it on every side
       const crack = new THREE.Mesh(new THREE.PlaneGeometry(.12, 6), M.black); crack.rotation.x = -Math.PI / 2; crack.rotation.z = .3; crack.position.set(4, .005, 8); scene.add(crack); stat(crack);
       placeTornPickups();
       bakeStatics();
@@ -1381,6 +1408,7 @@
       Sound.ambience(false); Sound.weather(false); Sound.groan(false);
       card(`<p class="card-kicker">Vermont</p><p>You burned every page. Someone came into the dark with a light, and you came out together.</p><p>What you carried out is in the journal. The letters, the exhibits and the index at the back are for whoever is still reading.</p><div class="card-actions"><button type="button" data-journal>Open the journal</button><button type="button" data-again>Walk the house again</button></div>`);
       $('[data-again]', hud.card)?.addEventListener('click', () => { store.set('again', true); location.reload(); });
+      $('button', hud.card)?.focus({ preventScroll: true });
     }
     if (game.ended) setTimeout(finish, 600);
 
@@ -1431,8 +1459,8 @@
 
     function frame(now) {
       requestAnimationFrame(frame);
-      const dt = Math.min(.05, (now - last) / 1000); last = now; t += dt;
-      fps += (1 / Math.max(dt, 1e-3) - fps) * .05;
+      const raw = (now - last) / 1000, dt = Math.min(.05, raw); last = now; t += dt; // the step is clamped; the frame rate is measured as it is
+      fps += (1 / Math.max(raw, 1e-3) - fps) * .05;
       if (game.paused || game.ended || !loadDone) { if (idle++ < 3) render(dt); return; } // the last frame stays on the canvas while you read
       idle = 0;
       if (!recStart) recStart = now;
@@ -1453,6 +1481,8 @@
       // input
       let mx = 0, mz = 0;
       if (keys.has('f')) mz -= 1; if (keys.has('b')) mz += 1; if (keys.has('l')) mx -= 1; if (keys.has('r')) mx += 1;
+      if (keys.has('tl')) P.yaw += dt * 1.8; if (keys.has('tr')) P.yaw -= dt * 1.8; // turning from the keyboard
+      if (keys.has('pu')) P.pitch = clamp(P.pitch + dt * 1.2, -1.35, 1.35); if (keys.has('pd')) P.pitch = clamp(P.pitch - dt * 1.2, -1.35, 1.35);
       mx += stick.dx; mz += stick.dz;
       const mag = Math.hypot(mx, mz); if (mag > 1) { mx /= mag; mz /= mag; }
       let speed = keys.has('run') ? 3.4 : 2.1;
@@ -1635,7 +1665,7 @@
       if (game.ended) return; // the end card is already up
       setTimeout(() => Sound.play('door_close', { gain: .8, rate: .9 }), 1400);
       setTimeout(() => {
-        card(`<p class="card-kicker">Ash Tree Lane</p><p>The house is empty. Whatever they left is still inside.</p><p class="card-help">${touch ? 'Drag on the left to walk, on the right to look. Tap what you find.' : 'Click to look around. Walk with the arrow keys, WASD or ZQSD. Press E for what you find, J for the journal.'}</p>`, 9000);
+        card(`<p class="card-kicker">Ash Tree Lane</p><p>The house is empty. Whatever they left is still inside.</p><p class="card-help">${touch ? 'Drag on the left to walk, on the right to look. Tap what you find.' : 'Click to look around. Walk with WASD or ZQSD, turn with the arrow keys. Press E for what you find, J for the journal.'}</p>`, 9000);
       }, 400);
       if (found.size > 2 && !game.ended) setTimeout(() => say('You have been here before. What you found is still in the journal.', 6000), 10000);
     }
@@ -1652,6 +1682,7 @@
   const Match = { running: false };
   Match.start = (onDone, onLeave) => {
     Match.running = true;
+    $('main').inert = true; journal.inert = true;
     const cv = $('.dark-canvas', dark), words = $('.dark-words', dark), page = $('.dark-page', dark), meter = $('.dark-meter', dark), hint = $('.dark-hint', dark), live = $('#dark-live');
     const btn = { primary: $('[data-act="primary"]', dark), sound: $('[data-act="sound"]', dark), back: $('[data-act="back"]', dark) };
     const ctx = cv.getContext('2d');
@@ -1659,7 +1690,7 @@
     const resize = () => { dpr = Math.min(2, devicePixelRatio || 1); w = innerWidth; h = innerHeight; cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); m.rect = null; };
     const sayD = text => {
       for (const old of $$('p:not(.dying)', words)) { old.classList.add('dying'); old.classList.remove('in'); setTimeout(() => old.remove(), 2000); }
-      const p = document.createElement('p'); p.textContent = text; mark(p); p.style.left = '50%'; p.style.top = '11.5%';
+      const p = document.createElement('p'); p.textContent = text; mark(p); p.style.left = '50%'; p.style.top = 'max(11.5%, 6rem)';
       words.append(p); requestAnimationFrame(() => requestAnimationFrame(() => p.classList.add('in'))); live.textContent = text;
     };
     function bookPages() {
@@ -1692,7 +1723,7 @@
         if (!Match.running) return;
         m.i++; page.classList.remove('burning');
         if (m.i < m.pages.length) { showPage(m.pages[m.i], m.i, m.pages.length); m.state = 'reading'; if (m.i === 1) sayD('You read it by the light of the one before.'); }
-        else { page.hidden = true; btn.primary.hidden = true; m.state = 'finale'; m.clock = 0; words.innerHTML = ''; }
+        else { page.hidden = true; btn.primary.hidden = true; btn.back.disabled = true; m.state = 'finale'; m.clock = 0; words.innerHTML = ''; }
       }, reduced ? 300 : 2100);
     }
     function drawFlame(c, x, y, tm, size) {
@@ -1711,6 +1742,7 @@
       dark.classList.add('leaving');
       setTimeout(() => {
         cancelAnimationFrame(raf); dark.hidden = true; dark.classList.remove('in', 'leaving'); Match.running = false;
+        $('main').inert = false; journal.inert = false;
         removeEventListener('resize', resize);
         done ? onDone() : onLeave();
       }, reduced ? 60 : 1400);
@@ -1756,7 +1788,7 @@
     btn.primary.onclick = burn; page.onclick = burn;
     btn.back.onclick = () => end(false);
     btn.sound.onclick = () => { Sound.toggle(); btn.sound.textContent = Sound.on ? 'Sound on' : 'Sound off'; syncSound(); };
-    dark.onkeydown = e => { if (e.key === 'Escape') { e.preventDefault(); end(false); } if (e.key === ' ' && e.target === dark) { e.preventDefault(); burn(); } };
+    dark.onkeydown = e => { if (e.key === 'Escape') { e.preventDefault(); if (m.state !== 'finale') end(false); } if (e.key === ' ' && e.target === dark) { e.preventDefault(); burn(); } };
     addEventListener('resize', resize); resize();
     Sound.ambience(true, .2);
     showPage(m.pages[0], 0, m.pages.length);

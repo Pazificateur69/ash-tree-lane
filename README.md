@@ -25,7 +25,7 @@ Open the door on the title page. Then:
 | | Desktop | Phone |
 |---|---|---|
 | Look | move the mouse (click once to capture it) | drag on the right half of the screen |
-| Walk | `W A S D`, `Z Q S D` or the arrow keys, `Shift` to hurry | drag on the left half |
+| Walk | `W A S D` or `Z Q S D`, `Shift` to hurry; the arrow keys turn, Page Up and Page Down look up and down | drag on the left half |
 | Pick up / open | `E`, `Enter` or click, when something is named at the bottom | tap the label |
 | Journal | `J` or the button top right | the button top right |
 | Leave a room, close a page | `Esc` | the button |
@@ -88,7 +88,7 @@ The journal is the book side of the project: a retelling of the novel in new wor
 ## Files
 
 ```
-index.html          title page, the house's HUD, the journal, and the book itself in a <template>
+index.html          title page, the house's HUD, the journal, and the book itself, readable without script
 style.css           paper typography for the journal, the HUD, the last pages
 game.js             journal, three.js house, maze, staircase, sound, Exploration #5
 check.mjs           structural checks (node check.mjs)
