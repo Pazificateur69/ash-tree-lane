@@ -1639,7 +1639,7 @@
       buildMaze(mazePhase()); placeMazePickups();
       for (let k = 0; k < 11; k++) { const f = k / 10, p = new THREE.Mesh(new THREE.CircleGeometry(.035, 8), M.pawprint); p.rotation.x = -Math.PI / 2; p.scale.y = 1.35; p.position.set(10.4 + f * 3.3 + (k % 2 ? .06 : -.06), .006, 9.6 - f * 1.05); scene.add(p); stat(p); } // prints, going in
       placeSteps(true); placeStairPickups(); bakeStatics();
-      if (!silent) { Sound.growl(.35); setTimeout(() => say('The living room has a new door. Behind it, the yard should be.'), 1200); setTimeout(() => say('The dog goes in first. Then the cat, as if it had been called.', 6500), 9000); setTimeout(() => { Sound.knock(); say('Scratching at the back door. From the yard. The dog is outside, and nothing in there goes outside.', 8000); }, 26000); }
+      if (!silent) { const home = f => () => { if (!S.karen && !S.vermont) f(); }; Sound.growl(.35); setTimeout(home(() => say('The living room has a new door. Behind it, the yard should be.')), 1200); setTimeout(home(() => say('The dog goes in first. Then the cat, as if it had been called.', 6500)), 9000); setTimeout(home(() => { Sound.knock(); say('Scratching at the back door. From the yard. The dog is outside, and nothing in there goes outside.', 8000); }), 26000); }
     }
     function tearHouse(silent) {
       if (S.torn) return; S.torn = true;
@@ -1755,7 +1755,12 @@
       wall(W, H, TH, VX, H / 2, z1); wall(TH, H, D, x0, H / 2, VZ); wall(TH, H, D, x1, H / 2, VZ);
       const pane = new THREE.Mesh(new THREE.PlaneGeometry(1.8, 1.2), M.glass); pane.position.set(VX, 1.5, z0); g.add(pane);
       const out = new THREE.Mesh(new THREE.PlaneGeometry(60, 20), new THREE.MeshBasicMaterial({ color: 0xc3ccd8, fog: false })); out.position.set(VX, 4, z0 - 14); g.add(out); // a low winter sky
-      for (let k = 0; k < 14; k++) { const hgt = 2.5 + hash(k) * 3.5, tr = new THREE.Mesh(new THREE.ConeGeometry(.5 + hash(k + 3) * .6, hgt, 7), new THREE.MeshBasicMaterial({ color: 0x55606b })); tr.position.set(VX - 9 + k * 1.4 + hash(k + 7) * .8, hgt / 2, z0 - 7 - hash(k + 11) * 5); g.add(tr); } // pines, gray with distance and snow
+      const treeline = (far, seed) => { const c = document.createElement('canvas'); c.width = 1024; c.height = 256; const cx = c.getContext('2d'); // a painted row of pines, snow on the boughs
+        for (let k = 0; k < 24; k++) { const x = (k / 24) * 1100 - 30 + hash(k + seed) * 30, h = 60 + hash(k * 3 + seed) * 110, w = h * (.32 + hash(k + seed * 7) * .1), base = 256;
+          cx.fillStyle = far ? '#9aa4ad' : '#56626b'; cx.beginPath(); cx.moveTo(x, base - h); for (let t = 1; t <= 6; t++) { const y = base - h + (h * t) / 6, ww = (w * t) / 6; cx.lineTo(x + ww / 2 + 6, y - 8); cx.lineTo(x + ww / 3, y - 4); } cx.lineTo(x + w / 2, base); cx.lineTo(x - w / 2, base); for (let t = 6; t >= 1; t--) { const y = base - h + (h * t) / 6, ww = (w * t) / 6; cx.lineTo(x - ww / 3, y - 4); cx.lineTo(x - ww / 2 - 6, y - 8); } cx.closePath(); cx.fill();
+          cx.fillStyle = far ? 'rgba(236,240,245,.35)' : 'rgba(236,240,245,.55)'; for (let t = 2; t <= 6; t += 2) { const y = base - h + (h * t) / 6, ww = (w * t) / 6; cx.fillRect(x - ww / 4, y - 9, ww / 2, 2); } }
+        const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; return tex; };
+      for (const [far, d, h] of [[true, 13, 7], [false, 8, 6]]) { const m = new THREE.Mesh(new THREE.PlaneGeometry(40, h), new THREE.MeshBasicMaterial({ map: treeline(far, far ? 5 : 17), transparent: true, depthWrite: false, fog: false })); m.position.set(VX, h / 2 - .1, z0 - d); g.add(m); } // pines, gray with distance and snow
       const snowField = new THREE.Mesh(new THREE.PlaneGeometry(60, 12), new THREE.MeshBasicMaterial({ color: 0xe9edf2 })); snowField.rotation.x = -Math.PI / 2; snowField.position.set(VX, -.02, z0 - 6.2); g.add(snowField);
       // snow, falling past the window
       const n = 420, pos = new Float32Array(n * 3); for (let i = 0; i < n; i++) { pos[i * 3] = VX - 4 + Math.random() * 8; pos[i * 3 + 1] = Math.random() * 4; pos[i * 3 + 2] = z0 - .4 - Math.random() * 7; }
@@ -2487,7 +2492,7 @@
     }
 
     // for tests and the curious
-    window.ATL = { P, S, G, stair, stairTo, colliders, statics, baked, sources, pool, regrow: (phase, L) => { buildMaze(phase, L); placeMazePickups(); }, startKaren, enterVermont, stats: () => stats, stills: () => stills.length, takeStill, jump, air: () => P.air, temperature, startShrink, setTile, flushChunks, driftWalls, startCollapse, tileAt, camY: () => camY, paused: () => game.paused, near: () => pickups.filter(p => Math.hypot(p.position.x - P.x, p.position.z - P.z) < 3).map(p => p.userData.id + '@' + Math.hypot(p.position.x - P.x, p.position.z - P.z).toFixed(2)), yawTo: (dx, dz) => Math.atan2(-dx, -dz), models, fps: () => Math.round(fps), loaded: () => loadDone, teleport(x, z, yaw = P.yaw) { P.x = x; P.z = z; P.yaw = yaw; P.vx = P.vz = 0; }, look(yaw, pitch = 0) { P.yaw = yaw; P.pitch = pitch; }, target: () => target?.userData.id, interact: () => target && interact(target), found, unlock, keys, renderer, scene };
+    window.ATL = { P, S, G, stair, stairTo, colliders, statics, baked, sources, pool, regrow: (phase, L) => { buildMaze(phase, L); placeMazePickups(); }, startKaren, enterVermont, hint: () => nextHint(), stats: () => stats, stills: () => stills.length, takeStill, jump, air: () => P.air, temperature, startShrink, setTile, flushChunks, driftWalls, startCollapse, tileAt, camY: () => camY, paused: () => game.paused, near: () => pickups.filter(p => Math.hypot(p.position.x - P.x, p.position.z - P.z) < 3).map(p => p.userData.id + '@' + Math.hypot(p.position.x - P.x, p.position.z - P.z).toFixed(2)), yawTo: (dx, dz) => Math.atan2(-dx, -dz), models, fps: () => Math.round(fps), loaded: () => loadDone, teleport(x, z, yaw = P.yaw) { P.x = x; P.z = z; P.yaw = yaw; P.vx = P.vz = 0; }, look(yaw, pitch = 0) { P.yaw = yaw; P.pitch = pitch; }, target: () => target?.userData.id, interact: () => target && interact(target), found, unlock, keys, renderer, scene };
   }
 
   /* ================================================================
