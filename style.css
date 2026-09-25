@@ -847,6 +847,8 @@ main > .colophon {
   cursor: pointer;
 }
 .hud-btn:hover { border-color: rgba(217, 216, 210, .75); }
+.fall { position: absolute; inset: 0; z-index: 3; background: #000; opacity: 0; pointer-events: none; transition: opacity 2.4s ease; }
+.fall.in { opacity: 1; }
 .veil {
   position: absolute;
   inset: 0;

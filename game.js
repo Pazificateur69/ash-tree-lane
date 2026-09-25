@@ -119,6 +119,7 @@
     jPage.innerHTML = '';
     const clone = src.cloneNode(true);
     jPage.append(clone);
+    const jumped = $('[data-jumped]', jPage); if (jumped) { const n = store.get('jumped', 0); jumped.textContent = n ? `${n} (you, in this browser)` : 'DNE (so far)'; }
     jPage.dataset.id = id;
     const back = document.createElement('button');
     back.type = 'button'; back.className = 'journal-continue'; back.dataset.close = '';
@@ -479,7 +480,7 @@
   const hud = {
     sub: $('[data-sub]'), prompt: $('[data-prompt]'), meter: $('[data-meter]'), rec: $('[data-rec]'),
     journal: $('[data-journal]'), sound: $('[data-sound]'), quality: $('[data-quality]'), veil: $('[data-veil]'), card: $('[data-card]'),
-    loading: $('[data-loading]'), loadBar: $('[data-load-bar]'), loadText: $('[data-load-text]'), stick: $('[data-stick]')
+    loading: $('[data-loading]'), loadBar: $('[data-load-bar]'), loadText: $('[data-load-text]'), stick: $('[data-stick]'), fall: $('[data-fall]')
   };
   let subTimer = 0;
   function say(text, ms = 5200) {
@@ -1288,7 +1289,7 @@
 
     /* ---------- the player ---------- */
 
-    const P = { x: 3, z: 12.1, yaw: 0, pitch: 0, vx: 0, vz: 0, r: .3, bob: 0, walked: 0, stepAcc: 0, inMaze: false, region: 'house', lineOut: 0, deepest: 0 };
+    const P = { x: 3, z: 12.1, yaw: 0, pitch: 0, vx: 0, vz: 0, r: .3, air: 0, airV: 0, fallV: 0, bob: 0, walked: 0, stepAcc: 0, inMaze: false, region: 'house', lineOut: 0, deepest: 0 };
     const keys = new Set();
     const KEYMAP = { KeyW: 'f', KeyZ: 'f', ArrowUp: 'f', KeyS: 'b', ArrowDown: 'b', KeyA: 'l', KeyQ: 'l', KeyD: 'r', ArrowLeft: 'tl', ArrowRight: 'tr', PageUp: 'pu', PageDown: 'pd', ShiftLeft: 'run', ShiftRight: 'run' };
     addEventListener('keydown', e => {
@@ -1296,7 +1297,8 @@
       if (!journal.hidden || !$('#dark').hidden) return;
       if (KEYMAP[e.code]) { keys.add(KEYMAP[e.code]); e.preventDefault(); }
       if ((e.code === 'Enter' || e.code === 'Space') && e.target.closest && e.target.closest('button, a, input')) return; // the control has it
-      if (e.code === 'KeyE' || e.code === 'Enter' || e.code === 'Space') { if (target) { interact(target); e.preventDefault(); } }
+      if (e.code === 'KeyE' || e.code === 'Enter') { if (target) { interact(target); e.preventDefault(); } }
+      if (e.code === 'Space') { jump(); e.preventDefault(); }
       if (e.code === 'KeyJ') { openJournal(jPage.dataset.id); e.preventDefault(); }
       if (e.code === 'KeyI') { const inv = !store.get('invert', false); store.set('invert', inv); say(inv ? 'Mouse inverted. I again to put it back.' : 'Mouse as it was.', 3000); e.preventDefault(); }
     });
@@ -1380,7 +1382,7 @@
 
     /* ---------- story wiring ---------- */
 
-    const S = { closet: false, hallway: false, torn: false, fleeing: false, explore5: false, arrived: false, grewA: false, turnA: false, regrow: null, regrowText: null, collapsePending: false, collapseT: -1, collapsed: false, doorOpen: false, doorAjar: false, quarterAt: 0, stairShort: false, saidDoor: false, saidAnte: false, farOut: false, saidCam: false, saidBottom: false };
+    const S = { closet: false, hallway: false, torn: false, fleeing: false, explore5: false, arrived: false, grewA: false, turnA: false, regrow: null, regrowText: null, collapsePending: false, collapseT: -1, collapsed: false, doorOpen: false, doorAjar: false, quarterAt: 0, stairShort: false, saidDoor: false, saidAnte: false, farOut: false, saidCam: false, saidBottom: false, falling: 0 };
     const mazePhase = () => found.has('ch9') ? 'empty' : found.has('ch7') ? 'short' : found.has('explA') ? 'long' : 'a';
     function openCloset(silent) {
       if (S.closet) return; S.closet = true;
@@ -1534,6 +1536,25 @@
       scene.remove(p); dropPickup(p); target = null; hud.prompt.hidden = true;
       S.quarterAt = t; Sound.coin(); say('Listen.', 2500); setTimeout(() => say('You will not hear it land.', 7000), 7000);
     }
+    /* a small jump, because every first-person game should have one; and the well in the Hall, which has no bottom */
+    function jump() {
+      if (stair.active || P.air > 0 || P.crawl || S.falling || game.paused || game.ended) return;
+      P.airV = 2.6; P.air = .001;
+    }
+    function startFall() {
+      S.falling = t; P.air = 0; P.airV = 0; P.fallV = 1;
+      Sound.growl(1.2); shake = 1.5; torchDip = 1;
+      say('You will not hear yourself land.', 6000);
+      setTimeout(() => { if (S.falling) hud.fall.classList.add('in'); }, 6500);
+      setTimeout(() => {
+        if (!S.falling) return;
+        const n = store.get('jumped', 0) + 1; store.set('jumped', n);
+        S.falling = 0; P.fallV = 0; camY = 1.6;
+        P.x = G.stair.x - WELL - .8; P.z = G.stair.z + 1.2; P.yaw = Math.atan2(-(G.stair.x - P.x), -(G.stair.z - P.z)); P.pitch = -.2; P.vx = P.vz = 0;
+        shadowRef.force = true;
+        setTimeout(() => { hud.fall.classList.remove('in'); say(n === 1 ? 'You are at the top of the stairs. You do not remember the climb.' : `You are at the top of the stairs again. That is ${n} times.`, 7000); }, 900);
+      }, 9500);
+    }
     /* Exploration A: the corridor is longer on the way back */
     function explorationA() {
       const fx = -Math.sin(P.yaw);
@@ -1657,6 +1678,7 @@
       if (keys.has('tl')) P.yaw += dt * 1.8; if (keys.has('tr')) P.yaw -= dt * 1.8; // turning from the keyboard
       if (keys.has('pu')) P.pitch = clamp(P.pitch + dt * 1.2, -1.35, 1.35); if (keys.has('pd')) P.pitch = clamp(P.pitch - dt * 1.2, -1.35, 1.35);
       mx += stick.dx; mz += stick.dz;
+      if (S.falling) mx = mz = 0;
       const mag = Math.hypot(mx, mz); if (mag > 1) { mx /= mag; mz /= mag; }
       let speed = keys.has('run') ? 3.4 : 2.1;
       if (G.low && P.x > G.x0 + G.low[0] * G.T && P.x < G.x0 + G.low[1] * G.T) speed *= .5; // on your hands and knees
@@ -1724,7 +1746,8 @@
                 placeStairPickups(); placeSteps(true);
                 if (!stair.shown) { stair.shown = true; say('A staircase. Going down.'); }
               }
-            } else { const kk = (WELL + P.r) / r; P.x = cx + dx * kk; P.z = cz + dz * kk; }
+            } else if (P.air > 0 || S.falling) { if (r < WELL - .35 && !S.falling) startFall(); } // in the air over the well: nothing holds you
+            else { const kk = (WELL + P.r) / r; P.x = cx + dx * kk; P.z = cz + dz * kk; }
           }
         }
         // the door back, once you have seen the bottom of what you can see
@@ -1733,7 +1756,7 @@
       if (stair.active) { // the eye follows the gait: level on the tread, then down over the edge
         const f = stair.f, target = reduced ? 1.6 - stair.u / STEP_A * RISE : 1.6 - (stair.k + THREE.MathUtils.smoothstep(f, .55, 1)) * RISE - .02 * Math.sin(Math.PI * f);
         camY += (target - camY) * (1 - Math.exp(-dt * (reduced ? 6 : 22)));
-      } else { const crawl = !!(G.low && P.x > G.x0 + G.low[0] * G.T && P.x < G.x0 + G.low[1] * G.T); P.crawl = crawl; camY += ((crawl ? .95 : 1.6) - camY) * (1 - Math.exp(-dt * (crawl ? 4 : 14))); }
+      } else if (!S.falling) { const crawl = !!(G.low && P.x > G.x0 + G.low[0] * G.T && P.x < G.x0 + G.low[1] * G.T); P.crawl = crawl; camY += ((crawl ? .95 : 1.6) - camY) * (1 - Math.exp(-dt * (crawl ? 4 : 14))); }
 
       // footsteps
       const reg = region();
@@ -1825,7 +1848,9 @@
       bobPhase += dt * (moving ? 9 : 0);
       const bob = reduced ? 0 : Math.sin(bobPhase) * .028 * (moving ? 1 : 0);
       const y = camY + bob;
-      camera.position.set(P.x, y, P.z);
+      if (P.air > 0) { P.airV -= 9.8 * dt; P.air += P.airV * dt; if (P.air <= 0) { P.air = 0; P.airV = 0; if (!S.falling && !reduced) Sound.step(P.region !== 'house', P.region === 'maze' || P.region === 'hall'); } }
+      if (S.falling) { P.fallV = Math.min(30, P.fallV + 9.8 * dt); camY -= P.fallV * dt; }
+      camera.position.set(P.x, y + P.air, P.z);
       const sway = reduced ? 0 : .0035 * (S.torn ? 2 : 1);
       camera.rotation.y = P.yaw + (Math.sin(t * .61) * .6 + Math.sin(t * 1.73) * .4) * sway;
       camera.rotation.x = P.pitch + (Math.sin(t * .83 + 1) * .6 + Math.sin(t * 2.1) * .4) * sway;
@@ -1862,13 +1887,13 @@
       if (game.ended) return; // the end card is already up
       setTimeout(() => Sound.play('door_close', { gain: .8, rate: .9 }), 1400);
       setTimeout(() => {
-        card(`<p class="card-kicker">Ash Tree Lane</p><p>The house is empty. Whatever they left is still inside.</p><p class="card-help">${touch ? 'Drag on the left to walk, on the right to look. Tap what you find.' : 'Click to look around. Walk with WASD or ZQSD, turn with the arrow keys. Press E for what you find, J for the journal, I to invert the mouse.'}</p>`, 9000);
+        card(`<p class="card-kicker">Ash Tree Lane</p><p>The house is empty. Whatever they left is still inside.</p><p class="card-help">${touch ? 'Drag on the left to walk, on the right to look. Tap what you find.' : 'Click to look around. Walk with WASD or ZQSD, turn with the arrow keys, Space to jump. Press E for what you find, J for the journal, I to invert the mouse.'}</p>`, 9000);
       }, 400);
       if (found.size > 2 && !game.ended) setTimeout(() => say('You have been here before. What you found is still in the journal.', 6000), 10000);
     }
 
     // for tests and the curious
-    window.ATL = { P, S, G, stair, stairTo, colliders, statics, baked, sources, pool, regrow: (phase, L) => { buildMaze(phase, L); placeMazePickups(); }, setTile, flushChunks, driftWalls, startCollapse, tileAt, camY: () => camY, paused: () => game.paused, near: () => pickups.filter(p => Math.hypot(p.position.x - P.x, p.position.z - P.z) < 3).map(p => p.userData.id + '@' + Math.hypot(p.position.x - P.x, p.position.z - P.z).toFixed(2)), yawTo: (dx, dz) => Math.atan2(-dx, -dz), models, fps: () => Math.round(fps), loaded: () => loadDone, teleport(x, z, yaw = P.yaw) { P.x = x; P.z = z; P.yaw = yaw; P.vx = P.vz = 0; }, look(yaw, pitch = 0) { P.yaw = yaw; P.pitch = pitch; }, target: () => target?.userData.id, interact: () => target && interact(target), found, unlock, keys, renderer, scene };
+    window.ATL = { P, S, G, stair, stairTo, colliders, statics, baked, sources, pool, regrow: (phase, L) => { buildMaze(phase, L); placeMazePickups(); }, jump, air: () => P.air, setTile, flushChunks, driftWalls, startCollapse, tileAt, camY: () => camY, paused: () => game.paused, near: () => pickups.filter(p => Math.hypot(p.position.x - P.x, p.position.z - P.z) < 3).map(p => p.userData.id + '@' + Math.hypot(p.position.x - P.x, p.position.z - P.z).toFixed(2)), yawTo: (dx, dz) => Math.atan2(-dx, -dz), models, fps: () => Math.round(fps), loaded: () => loadDone, teleport(x, z, yaw = P.yaw) { P.x = x; P.z = z; P.yaw = yaw; P.vx = P.vz = 0; }, look(yaw, pitch = 0) { P.yaw = yaw; P.pitch = pitch; }, target: () => target?.userData.id, interact: () => target && interact(target), found, unlock, keys, renderer, scene };
   }
 
   /* ================================================================

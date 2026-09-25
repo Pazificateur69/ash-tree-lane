@@ -26,6 +26,7 @@ Open the door on the title page. Then:
 |---|---|---|
 | Look | move the mouse (click once to capture it) | drag on the right half of the screen |
 | Walk | `W A S D` or `Z Q S D`, `Shift` to hurry; the arrow keys turn, Page Up and Page Down look up and down | drag on the left half |
+| Jump | `Space` (a small one; the well in the Hall has no bottom, and the index keeps count) | |
 | Invert the mouse | `I` | |
 | Pick up / open | `E`, `Enter` or click, when something is named at the bottom | tap the label |
 | Journal | `J` or the button top right | the button top right |
