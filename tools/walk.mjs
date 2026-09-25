@@ -1,5 +1,5 @@
 // Walks the whole story in headless Chromium: the house, Exploration A, Holloway's corridor and the Hall, the quarter, the stairs,
-// the tear, the rescue and the house closing, the yard, the empty hallway, the last pages, and the journal at the end. Screenshots each scene.
+// the tear, the rescue and the house closing, the yard, the empty hallway, the last pages, Karen, Vermont, and the journal at the end. Screenshots each scene.
 // Run from the repository root with a static server on port 8123: node tools/walk.mjs (needs playwright-core; LOW=1 for software rendering; CHROME=... to pick a Chromium)
 import { chromium } from 'playwright-core';
 import { mkdirSync } from 'node:fs';
@@ -49,6 +49,15 @@ await shot('03-living-window', 10.8, 8.9, Math.PI + .3, .1);
 await shot('04-kitchen', 4.8, 9.6, Math.PI / 2 + .5, -.1);
 await shot('05-bedroom', 4.2, 3.2, Math.PI / 2 - .6, -.15);
 await shot('06-kids', 9.2, 3.4, -Math.PI / 2 - .5, -.1);
+// measuring the house: the tape on the kitchen counter, the pencil mark in the hall, the same wall from outside the window
+check('the tape measure', await take('tape_measure', 1.9, 8.6, W, -.45));
+check('the pencil mark', await take('measure_in', 13.2, 4.65, E, -.25));
+await page.waitForFunction(() => ATL.S.measuredIn, null, { timeout: 30000 }).catch(() => {});
+await page.waitForTimeout(1500);
+check('the outside of the same wall', await take('measure_out', 13.2, 2.4, E, 0));
+await page.waitForFunction(() => ATL.found.has('ch2'), null, { timeout: 60000 }).catch(() => {});
+check('the house is a quarter inch wider inside', await ev(() => ATL.found.has('ch2')));
+await page.click('[data-close]').catch(() => {}); await page.waitForTimeout(400);
 // the house opens up to the hallway
 await ev(() => { ATL.unlock('ch1', false); ATL.unlock('ch2', false); ATL.unlock('ch3', false); });
 await page.waitForTimeout(600);
@@ -178,8 +187,19 @@ for (let i = 0; i < 9; i++) { const b = page.locator('[data-act="primary"]'); if
 await page.waitForTimeout(12000);
 await page.screenshot({ path: OUT + '22-finale.png' });
 await page.waitForFunction(() => document.querySelector('#dark').hidden, null, { timeout: 400000 }); // the finale runs on simulated time, slow under software rendering
-await page.waitForTimeout(1500);
+// Karen walks into the house: the light at the end of the corridor
+await page.waitForFunction(() => ATL.S.karen, null, { timeout: 30000 }).catch(() => {});
+check('Karen goes in', await ev(() => ATL.S.karen && ATL.G.phase === 'karen'), await ev(() => ({ karen: ATL.S.karen, phase: ATL.G.phase })));
+await ev(() => { document.querySelector('[data-card]').hidden = true; ATL.teleport(ATL.G.x0 + 44, 8.75, -Math.PI / 2); ATL.look(-Math.PI / 2, -.05); ATL.keys.add('f'); });
+await page.waitForTimeout(2500);
+await page.screenshot({ path: OUT + '22b-karen.png' });
+await page.waitForFunction(() => ATL.S.vermont, null, { timeout: 300000 }).catch(() => {});
+await ev(() => ATL.keys.delete('f'));
+check('Vermont, after', await ev(() => ATL.S.vermont && ATL.found.has('ch11') && ATL.found.has('explSix')));
+await page.waitForTimeout(3000);
 await page.screenshot({ path: OUT + '23-vermont.png' });
+check('the finished film', await take('record', -299.4, 0, 0, -.5));
+await page.waitForTimeout(1500);
 const ended = await ev(() => ({ card: document.querySelector('[data-card]').textContent.slice(0, 40), journal: document.querySelector('[data-journal]').textContent }));
 check('the ending', /Vermont/.test(ended.card), ended);
 check('the ending says what is still in the house', await ev(() => /Still in the house|found everything/.test(document.querySelector('[data-card]').textContent)));
@@ -188,6 +208,8 @@ await page.waitForTimeout(600);
 await page.screenshot({ path: OUT + '24-journal.png' });
 await page.click('[data-show="index"]'); await page.waitForTimeout(400); await page.screenshot({ path: OUT + '25-index.png' });
 await page.click('[data-show="collapse"]'); await page.waitForTimeout(400); await page.screenshot({ path: OUT + '26-collapse.png' });
+await page.click('[data-show="explSix"]'); await page.waitForTimeout(400); await page.screenshot({ path: OUT + '27-six.png' });
+check('Exploration #6 is filled in', await ev(() => /\d/.test(document.querySelector('[data-six-dark]').textContent)));
 console.log('found', await ev(() => [...ATL.found]));
 console.log('errors', errors.length ? errors.join('\n') : 'none');
 console.log(fails ? `FAILED ${fails}` : 'ALL PASS');

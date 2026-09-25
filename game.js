@@ -628,9 +628,11 @@
     subTimer = setTimeout(() => { hud.sub.classList.remove('in'); if (subQueue.length) setTimeout(nextSub, 350); }, ms);
   }
   function nextSub() { const n = subQueue.shift(); if (n) showSub(n[0], n[1]); }
-  function say(text, ms = 5200) {
+  function say(text, ms = 5200, now = false) { // now: what the house just did, said as it happens
     if (subQueue.some(q => q[0] === text) || (hud.sub.textContent === text && hud.sub.classList.contains('in'))) return; // the same line twice says nothing new
     const shown = performance.now() - subShownAt;
+    if (now) { subQueue.length = 0; showSub(text, ms); return; }
+    if (subQueue.length) { subQueue.push([text, ms]); if (subQueue.length > 3) subQueue.shift(); return; } // wait your turn
     if (hud.sub.classList.contains('in') && shown < subMin) { // the current line has not been read yet
       subQueue.push([text, ms]); if (subQueue.length > 3) subQueue.shift();
       clearTimeout(subTimer); subTimer = setTimeout(() => { hud.sub.classList.remove('in'); setTimeout(nextSub, 350); }, subMin - shown);
@@ -704,7 +706,8 @@
         import('three/addons/postprocessing/OutputPass.js'),
         import('three/addons/loaders/GLTFLoader.js'),
         import('three/addons/loaders/RGBELoader.js'),
-        import('three/addons/utils/BufferGeometryUtils.js')
+        import('three/addons/utils/BufferGeometryUtils.js'),
+        import('three/addons/libs/meshopt_decoder.module.js')
       ]);
     } catch (e) {
       console.error(e);
@@ -717,8 +720,8 @@
     $('.threshold').hidden = true;
     $('#game').hidden = false;
     document.body.classList.add('in-house');
-    const [THREE, { EffectComposer }, { RenderPass }, { ShaderPass }, { UnrealBloomPass }, { OutputPass }, { GLTFLoader }, { RGBELoader }, { mergeGeometries }] = libs;
-    try { buildWorld({ THREE, EffectComposer, RenderPass, ShaderPass, UnrealBloomPass, OutputPass, GLTFLoader, RGBELoader, mergeGeometries }); }
+    const [THREE, { EffectComposer }, { RenderPass }, { ShaderPass }, { UnrealBloomPass }, { OutputPass }, { GLTFLoader }, { RGBELoader }, { mergeGeometries }, { MeshoptDecoder }] = libs;
+    try { buildWorld({ THREE, EffectComposer, RenderPass, ShaderPass, UnrealBloomPass, OutputPass, GLTFLoader, RGBELoader, mergeGeometries, MeshoptDecoder }); }
     catch (e) {
       console.error(e);
       $('#game').hidden = true; $('.threshold').hidden = false; document.body.classList.remove('in-house'); game.started = false;
@@ -760,7 +763,7 @@
     [28, 'If there is a bottom, it is not for you.']
   ];
 
-  function buildWorld({ THREE, EffectComposer, RenderPass, ShaderPass, UnrealBloomPass, OutputPass, GLTFLoader, RGBELoader, mergeGeometries }) {
+  function buildWorld({ THREE, EffectComposer, RenderPass, ShaderPass, UnrealBloomPass, OutputPass, GLTFLoader, RGBELoader, mergeGeometries, MeshoptDecoder }) {
     const canvas = $('.game-canvas');
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
     let prCap = Q.low ? 1 : 1.25; // lowered automatically when frames come slowly
@@ -786,12 +789,15 @@
     manager.onProgress = (url, n, total) => { if (loadDone) return; const p = Math.round(n / total * 100); hud.loadBar.style.width = p + '%'; hud.loadText.textContent = `The house is loading · ${p}%`; };
     const texLoader = new THREE.TextureLoader(manager);
     THREE.Cache.enabled = true; // one download per file
-    const texCache = new Map();
+    const texCache = new Map(), lateTex = [];
+    const LOWTEX = new Set(['ash_color.jpg', 'ash_normal.jpg', 'ash_rough.jpg', 'brick_bump.jpg', 'brick_diffuse.jpg', 'brick_roughness.jpg', 'ground_color.jpg', 'leather_color.jpg', 'leather_normal.jpg', 'leather_rough.jpg', 'linen_color.jpg', 'linen_normal.jpg', 'linen_rough.jpg', 'mahogany_color.jpg', 'mahogany_normal.jpg', 'mahogany_rough.jpg', 'plaster_color.jpg', 'plaster_normal.jpg', 'plaster_rough.jpg', 'woodfloor_ao.jpg', 'woodfloor_color.jpg', 'woodfloor_normal.jpg', 'woodfloor_rough.jpg']); // half size copies, for phones and the low setting
     const T = (name, { srgb = false, repeat = [1, 1], aniso = 4 } = {}) => { // one texture per file and tiling; the same one is reused wherever it recurs
       const key = `${name}|${repeat[0]}|${repeat[1]}|${aniso}`;
       let t = texCache.get(key);
       if (t) return t;
-      t = texLoader.load('assets/textures/' + name);
+      const url = 'assets/textures/' + (Q.low && LOWTEX.has(name) ? 'low/' : '') + name;
+      if (name.startsWith('ash_')) { t = new THREE.Texture(); lateTex.push([t, url]); } // the ash is only seen beyond the house: it can arrive after the door opens
+      else t = texLoader.load(url);
       t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(repeat[0], repeat[1]); t.anisotropy = Math.min(aniso, maxAniso);
       if (srgb) t.colorSpace = THREE.SRGBColorSpace;
       texCache.set(key, t);
@@ -844,6 +850,7 @@
     const pmrem = new THREE.PMREMGenerator(renderer);
     manager.onLoad = () => {
       if (loadDone) return; loadDone = true;
+      const lateLoader = new THREE.TextureLoader(); for (const [t, url] of lateTex) lateLoader.load(url, l => { t.image = l.image; t.needsUpdate = true; l.dispose(); });
       skyHDR.mapping = THREE.EquirectangularReflectionMapping; scene.environment = pmrem.fromEquirectangular(skyHDR).texture; scene.environmentIntensity = .4; skyHDR.dispose();
       hud.loadBar.style.width = '100%';
       const go = () => { idle = 0; shadowRef.force = true; hud.loading.classList.add('off'); setTimeout(() => { hud.loading.hidden = true; }, 1400); arrive(); };
@@ -922,7 +929,7 @@
 
     /* ---------- models: real things, streamed in as they arrive ---------- */
 
-    const gltf = new GLTFLoader();
+    const gltf = new GLTFLoader(); gltf.setMeshoptDecoder(MeshoptDecoder); // the furniture arrives packed, a third lighter
     const models = { loaded: 0, wanted: 0 };
     function model(name, { size, axis = 'y', x = 0, y = 0, z = 0, ry = 0, cast = true, mirror = false, onLoad } = {}) {
       const g = new THREE.Group(); g.position.set(x, y, z); g.rotation.y = ry; if (mirror) g.scale.z = -1; scene.add(g);
@@ -2016,7 +2023,7 @@
     function explorationA() {
       const fx = -Math.sin(P.yaw);
       if (!S.grewA && P.x > G.x0 + (G.L - 1) * G.T && fx > .4) { S.grewA = true; buildMaze('a', G.L + 30); P.x += 30 * G.T; P.lineOut += 30 * G.T; placeMazePickups(); S.turnA = true; }
-      if (S.turnA && fx < -.5) { S.turnA = false; stats.turned++; Sound.knock(); say('The corridor is longer than it was.', 6000); }
+      if (S.turnA && fx < -.5) { S.turnA = false; stats.turned++; Sound.knock(); say('The corridor is longer than it was.', 6000, true); }
     }
     /* walls that move only when nobody is looking: a doorway you passed is gone, a wall you passed has one */
     let driftT = 16;
@@ -2241,7 +2248,7 @@
           const dk = -6, da = dk * STEP_A; stair.lastSkip = t; stair.stretched++; stair.u -= da; sk -= dk;
           const a2 = a - da; P.x = cx + Math.cos(a2) * r; P.z = cz + Math.sin(a2) * r; P.yaw += da; stair.lastA = wrapPi(a2); stair.k = sk; dx = P.x - cx; dz = P.z - cz;
           camY = 1.6 - stair.depth(); placeSteps(true); shadowRef.force = true; Sound.growl(.8); shake = Math.max(shake, 1.2); torchDip = .6;
-          if (!S.stairShort) { S.stairShort = true; say('The staircase is longer than it was. It is adding to itself under you.', 6000); }
+          if (!S.stairShort) { S.stairShort = true; say('The staircase is longer than it was. It is adding to itself under you.', 6000, true); }
         }
         stair.lastU = stair.u;
         const outward = (P.vx * dx + P.vz * dz) / (r * (Math.hypot(P.vx, P.vz) || 1e-6));
