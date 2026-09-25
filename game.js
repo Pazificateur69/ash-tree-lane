@@ -657,7 +657,7 @@
   const Q = { low: typeof savedLow === 'boolean' ? savedLow : touch };
   // settings: sensitivity, field of view, subtitle size, calm mode, invert, frame rate, volume
   function applySettings() {
-    document.body.dataset.sub = SET.sub; hud.fps.hidden = !SET.fps;
+    document.body.dataset.subsize = SET.sub; hud.fps.hidden = !SET.fps;
     if (Sound.ctx) Sound.volume();
   }
   function openSettings() {

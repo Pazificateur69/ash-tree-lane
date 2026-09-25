@@ -71,9 +71,10 @@ await ev(([x, z]) => { ATL.teleport(x, z, -Math.PI / 2); ATL.look(-Math.PI / 2, 
 await page.waitForFunction(() => ATL.S.grewA, null, { timeout: 15000 }).catch(() => {});
 const grew = await ev(() => ({ grewA: ATL.S.grewA, L: ATL.G.L, x: +ATL.P.x.toFixed(1) }));
 check('Exploration A: the corridor is longer on the way back', grew.grewA && grew.L === 54 && grew.x > endRoom.x + 10, grew);
+await ev(() => { window.__said = []; new MutationObserver(() => __said.push(document.querySelector('[data-sub]').textContent)).observe(document.querySelector('[data-sub]'), { childList: true, subtree: true, characterData: true }); });
 await ev(() => ATL.look(Math.PI / 2, 0)); await page.waitForFunction(() => !ATL.S.turnA, null, { timeout: 15000 }).catch(() => {}); await page.waitForTimeout(400);
 await page.screenshot({ path: OUT + '10-corridor-a-back.png' });
-check('Exploration A: the subtitle', await ev(() => !ATL.S.turnA && /longer than it was/.test(document.querySelector('[data-sub]').textContent)));
+check('Exploration A: the subtitle', await ev(() => !ATL.S.turnA && __said.some(t => /longer than it was/.test(t))));
 const cam = await ev(() => ({ x: ATL.G.x0 + (ATL.G.L + 3.5) * ATL.G.T, z: ATL.G.z0 + 80.5 * ATL.G.T }));
 check('Exploration A: the Hi8', await take('navidson_cam', cam.x - 1.2, cam.z - .3, ATL_YAW(cam.x - 1.2, cam.z - .3, cam.x, cam.z), -.35));
 function ATL_YAW(x0, z0, x1, z1) { return Math.atan2(-(x1 - x0), -(z1 - z0)); }
