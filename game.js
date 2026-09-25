@@ -2763,6 +2763,7 @@
       const old = renderer.getRenderTarget(); renderer.setRenderTarget(feedRT); renderer.render(scene, feedCam); renderer.setRenderTarget(old);
     }
     monitorLabel();
+    { const tb = $('[data-touch-btns]'); if (touch && tb) { tb.hidden = false; for (const [sel, fn] of [['[data-still-btn]', () => takeStill()], ['[data-marker-btn]', () => dropMarker()]]) { const b = $(sel, tb); b.addEventListener('pointerdown', e => e.stopPropagation()); b.addEventListener('touchstart', e => e.stopPropagation(), { passive: true }); b.addEventListener('click', e => { e.stopPropagation(); fn(); }); } } } // on a phone, the camcorder's two buttons
     // a ball, rolling to the new door on its own
     const ball = new THREE.Mesh(new THREE.SphereGeometry(.09, 16, 12), new THREE.MeshStandardMaterial({ color: 0xc8321f, roughness: .6 })); ball.visible = false; scene.add(ball);
     function rollBall(dt) {

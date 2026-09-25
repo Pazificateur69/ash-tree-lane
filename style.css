@@ -861,6 +861,7 @@ main > .colophon {
   cursor: pointer;
 }
 .hud-btn:hover { border-color: rgba(217, 216, 210, .75); }
+.hud-touch { position: absolute; right: max(1rem, env(safe-area-inset-right, 0px)); bottom: calc(1rem + env(safe-area-inset-bottom, 0px)); display: flex; gap: .5rem; pointer-events: auto; }
 .fall { position: absolute; inset: 0; z-index: 3; background: #000; opacity: 0; pointer-events: none; transition: opacity 2.4s ease; }
 .fall.in { opacity: 1; }
 .fall.white { background: #f6f6f3; transition-duration: 4s; }
