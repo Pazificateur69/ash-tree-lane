@@ -9,6 +9,8 @@
   const fmt = n => Math.round(n).toLocaleString('en-US');
   const FT = 3.2808;
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const SET = Object.assign({ sens: 1, fov: 70, sub: 'm', calm: false, fps: false, vol: .9 }, (() => { try { return JSON.parse(localStorage.getItem('atl:settings') || '{}') || {}; } catch (e) { return {}; } })());
+  const saveSet = () => { try { localStorage.setItem('atl:settings', JSON.stringify(SET)); } catch (e) { /* private mode */ } };
   const touch = matchMedia('(pointer: coarse)').matches;
 
   const store = {
@@ -82,7 +84,7 @@
      ================================================================ */
 
   const BOOK = $('#book'); BOOK.remove(); // the book is in the page for readers without script; with script it is read from here
-  const ORDER = ['edition', 'introduction', 'ch1', 'ch2', 'ch3', 'explA', 'karen', 'explorations', 'ch4', 'ch5', 'samples', 'ch6', 'tom', 'ch7', 'rescue', 'collapse', 'ch8', 'ch9', 'ch10', 'ch11', 'letters', 'exhibits', 'well', 'index', 'colophon'];
+  const ORDER = ['edition', 'introduction', 'ch1', 'ch2', 'ch3', 'explA', 'karen', 'explorations', 'ch4', 'ch5', 'samples', 'ch6', 'tom', 'ch7', 'rescue', 'collapse', 'ch8', 'ch9', 'ch10', 'ch11', 'explSix', 'letters', 'exhibits', 'well', 'index', 'colophon'];
   const FREE = ['edition', 'colophon'];
   const TITLES = Object.fromEntries(ORDER.map(id => [id, BOOK.querySelector('#' + id).dataset.title]));
   const savedFound = store.get('found', FREE);
@@ -114,11 +116,31 @@
     jCount.textContent = `${Math.min(n, total)} of ${total} found`;
     if (matchMedia('(max-width: 760px)').matches) jContents.querySelector('[aria-current]')?.scrollIntoView({ inline: 'center', block: 'nearest' });
   }
+  // Exploration #6: the reader's own numbers, and Johnny, who read them
+  function fillSix(root) {
+    const st = ATL.stats(), n = x => Math.round(x).toLocaleString('en-US'), jumps = store.get('jumped', 0), stills = store.get('stills', []);
+    const setv = (k, v) => { const e = root.querySelector(`[data-six-${k}]`); if (e) e.textContent = v; };
+    const hms = s => { s = Math.floor(s); const p = x => String(x).padStart(2, '0'); return `${p(Math.floor(s / 3600))}:${p(Math.floor(s / 60) % 60)}:${p(s % 60)}`; };
+    setv('deep', st.deep > 0 ? `${n(st.deep)} ft` : 'DNE'); setv('line', st.line > 0 ? `${n(st.line)} ft` : 'DNE'); setv('dark', st.dark > 0 ? hms(st.dark) : 'DNE');
+    setv('quarters', st.quarters || 'none'); setv('jumps', jumps || 'none'); setv('turned', st.turned || 'never'); setv('stills', Array.isArray(stills) ? stills.length || 'none' : 'none'); setv('visits', visits);
+    const lines = [];
+    if (jumps > 0) lines.push(jumps > 1 ? `You jumped. ${jumps} times. I read that and put the book face down on the table for a while.` : 'You jumped, huh. I knew somebody would. I just thought it would be me.');
+    else lines.push('You never jumped. Smart. I would have. I think about it every time I go down the stairs in this building.');
+    if (st.turned > 0) lines.push('You turned round when the corridor would not end. I didn’t, the first time. I kept walking and it kept being the same ten feet, and I only stopped because my legs did.');
+    if (st.quarters > 0) lines.push(`You dropped ${st.quarters > 1 ? st.quarters + ' quarters' : 'a quarter'}. Nobody has ever heard one land. I have started listening for them at night. I know how that sounds.`);
+    if (st.deep > 150) lines.push(`${n(st.deep)} feet. Holloway would have wanted to know how you did it, and then he would have wanted to go farther.`);
+    lines.push('Whatever you took out of there, keep it somewhere with a light on.');
+    const jd = root.querySelector('[data-six-johnny]'); if (jd) jd.innerHTML = lines.map(l => `<p>${l.replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' })[c])}</p>`).join('') + '<p class="signature">J.T.</p>';
+    const film = root.querySelector('[data-six-film]'), strip = root.querySelector('[data-six-strip]');
+    if (film && strip && Array.isArray(stills) && stills.length) { film.hidden = false; strip.innerHTML = ''; stills.forEach((s2, i) => { const f = document.createElement('div'); const im = document.createElement('img'); im.src = s2.url; im.alt = `Still ${i + 1}, at ${s2.rec}`; const c = document.createElement('span'); c.textContent = `${i + 1} · ${s2.rec}`; f.append(im, c); strip.append(f); }); }
+  }
   function showPage(id) {
     const src = BOOK.querySelector('#' + id);
     jPage.innerHTML = '';
     const clone = src.cloneNode(true);
     jPage.append(clone);
+    if (id === 'explSix' && window.ATL && ATL.stats) fillSix(clone);
+    const vdoor = $('[data-visitdoor]', jPage); if (vdoor) vdoor.textContent = store.get('endings', 0) > 0 ? `visit ${visits}` : 'DNE';
     const jumped = $('[data-jumped]', jPage); if (jumped) { const n = store.get('jumped', 0); jumped.textContent = n ? `${n} (you, in this browser)` : 'DNE (so far)'; }
     jPage.dataset.id = id;
     const back = document.createElement('button');
@@ -276,6 +298,7 @@
     if (e.key === 'Escape') {
       if (opened.length) { e.preventDefault(); closeLeaf(); }
       else if (!journal.hidden) { e.preventDefault(); closeJournal(); }
+      else if (hud.settings && !hud.settings.hidden) { e.preventDefault(); closeSettings(); }
       else if (!hud.card.hidden && hud.card.onclick) { e.preventDefault(); hud.card.onclick(); }
     }
   });
@@ -316,7 +339,7 @@
       if (!AC) return;
       const c = this.ctx = new AC();
       this.out = c.createGain();
-      this.out.gain.value = this.on ? .9 : 0;
+      this.out.gain.value = this.on ? SET.vol : 0;
       this.out.connect(c.destination);
       // everything goes to the bus; the bus goes straight out, and through a long gray room
       this.bus = c.createGain(); this.bus.connect(this.out);
@@ -389,7 +412,11 @@
       g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(.9 * level, t + 1.2); g.gain.setTargetAtTime(0, t + 2.2, .9);
       src.connect(lp).connect(g);
       o.connect(olp).connect(og).connect(g);
-      if (c.createStereoPanner) { const pn = c.createStereoPanner(); pn.pan.setValueAtTime(sweep[0], t); pn.pan.linearRampToValueAtTime(sweep[1], t + 4.5); g.connect(pn).connect(this.bus); } else g.connect(this.bus);
+      if (c.createPanner && this.L) { // it moves round you, in the space around your head
+        const [ax, ay, az] = this.around(sweep[0] * Math.PI), [bx, by, bz] = this.around(sweep[1] * Math.PI), pn = this.at(ax, ay, az, 6);
+        if (pn.positionX) { pn.positionX.setValueAtTime(ax, t); pn.positionZ.setValueAtTime(az, t); pn.positionX.linearRampToValueAtTime(bx, t + 4.5); pn.positionZ.linearRampToValueAtTime(bz, t + 4.5); }
+        g.connect(pn).connect(this.bus);
+      } else if (c.createStereoPanner) { const pn = c.createStereoPanner(); pn.pan.setValueAtTime(sweep[0], t); pn.pan.linearRampToValueAtTime(sweep[1], t + 4.5); g.connect(pn).connect(this.bus); } else g.connect(this.bus);
       src.start(t); o.start(t); src.stop(t + 7); o.stop(t + 7);
     },
     step(hard, echo) {
@@ -440,8 +467,25 @@
         at += gap; gap *= 1.22; level *= .84;
       }
     },
+    L: null,
+    listen(x, y, z, yaw) { // the ears go where the camera goes
+      if (!this.ctx) return;
+      const l = this.ctx.listener, fx = -Math.sin(yaw), fz = -Math.cos(yaw), t = this.ctx.currentTime;
+      if (l.positionX) { l.positionX.setTargetAtTime(x, t, .03); l.positionY.setTargetAtTime(y, t, .03); l.positionZ.setTargetAtTime(z, t, .03); l.forwardX.setTargetAtTime(fx, t, .03); l.forwardY.setTargetAtTime(0, t, .03); l.forwardZ.setTargetAtTime(fz, t, .03); l.upX.value = 0; l.upY.value = 1; l.upZ.value = 0; }
+      else if (l.setPosition) { l.setPosition(x, y, z); l.setOrientation(fx, 0, fz, 0, 1, 0); }
+      this.L = { x, y, z, yaw };
+    },
+    at(x, y, z, ref = 2) { // a point in the house that a sound comes from
+      const p = this.ctx.createPanner(); p.panningModel = 'HRTF'; p.distanceModel = 'inverse'; p.refDistance = ref; p.rolloffFactor = .9; p.maxDistance = 200;
+      if (p.positionX) { p.positionX.value = x; p.positionY.value = y; p.positionZ.value = z; } else p.setPosition(x, y, z);
+      return p;
+    },
+    around(ang, r = 12) { // a point at an angle round the listener: 0 ahead, PI behind
+      const L = this.L || { x: 0, y: 1.6, z: 0, yaw: 0 }, a = L.yaw + ang;
+      return [L.x - Math.sin(a) * r, L.y, L.z - Math.cos(a) * r];
+    },
     // a voice you can hear but not make out: a buzz through moving vowel formants, syllable by syllable, then the tape it was recorded on
-    voice({ pitch = 120, dur = 3, pan = 0, far = 0, radio = false, level = .5, at = 0 } = {}) {
+    voice({ pitch = 120, dur = 3, pan = 0, far = 0, radio = false, level = .5, at = 0, pos = null } = {}) {
       if (!this.ctx) return;
       const c = this.ctx, t0 = c.currentTime + .05 + at;
       const VOW = [[730, 1090, 2440], [530, 1840, 2480], [270, 2290, 3010], [570, 840, 2410], [300, 870, 2240], [660, 1720, 2410], [490, 1350, 1690]];
@@ -450,12 +494,12 @@
       const env = c.createGain(); env.gain.value = 0;
       const mix = c.createGain(); mix.gain.value = 1;
       const fs = [0, 1, 2].map(k => { const f = c.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = k === 0 ? 7 : 11; const g = c.createGain(); g.gain.value = [1, .55, .22][k]; o.connect(f).connect(g).connect(env); return f; });
-      const hp = c.createBiquadFilter(), lp = c.createBiquadFilter(), sh = c.createWaveShaper(), pn = c.createStereoPanner ? c.createStereoPanner() : null, out = c.createGain();
+      const hp = c.createBiquadFilter(), lp = c.createBiquadFilter(), sh = c.createWaveShaper(), pn = pos && c.createPanner ? this.at(pos[0], pos[1], pos[2], 3) : c.createStereoPanner ? c.createStereoPanner() : null, out = c.createGain();
       hp.type = 'highpass'; hp.frequency.value = radio ? 480 : 220; lp.type = 'lowpass'; lp.frequency.value = (radio ? 2600 : 3600) * (1 - far * .6);
       const curve = new Float32Array(256); for (let i = 0; i < 256; i++) { const x = i / 128 - 1; curve[i] = Math.tanh(x * (radio ? 4 : 2)); } sh.curve = curve;
       out.gain.value = level * (1 - far * .75);
       env.connect(hp).connect(sh).connect(lp);
-      let tail = lp; if (pn) { pn.pan.value = clamp(pan, -1, 1); tail.connect(pn); tail = pn; }
+      let tail = lp; if (pn) { if (pn.pan) pn.pan.value = clamp(pan, -1, 1); tail.connect(pn); tail = pn; }
       tail.connect(out); out.connect(far > .3 ? this.bus : this.out); if (far > .3) out.connect(this.send);
       let t = t0, p = pitch * (.95 + Math.random() * .1);
       o.frequency.setValueAtTime(p, t);
@@ -497,6 +541,38 @@
       g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(.7, t + dur * .8); g.gain.linearRampToValueAtTime(0, t + dur);
       n.connect(f).connect(g).connect(this.bus); n.start(t); n.stop(t + dur + .2);
     },
+    tapeZip(dur = 1.1) { // a steel tape running out of its case
+      if (!this.ctx) return;
+      const c = this.ctx, t = c.currentTime, n = this.noise(), f = c.createBiquadFilter(), g = c.createGain();
+      f.type = 'bandpass'; f.Q.value = 3; f.frequency.setValueAtTime(2200, t); f.frequency.linearRampToValueAtTime(3400, t + dur);
+      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(.18, t + .05); g.gain.setValueAtTime(.18, t + dur - .08); g.gain.linearRampToValueAtTime(0, t + dur);
+      n.connect(f).connect(g).connect(this.bus); n.start(t); n.stop(t + dur + .1);
+    },
+    hush(sec = 3) { // everything stops for a moment
+      if (!this.ctx) return;
+      const t = this.ctx.currentTime, lv = this.on ? SET.vol : 0;
+      this.out.gain.cancelScheduledValues(t); this.out.gain.setTargetAtTime(.03 * lv, t, .08); this.out.gain.setTargetAtTime(lv, t + sec, .8);
+    },
+    pant(on) { // short breaths, close: someone afraid of the dark, walking into it
+      if (!this.ctx) return;
+      const c = this.ctx, t = c.currentTime;
+      if (on && !this.panting) {
+        const n = this.noise(), f = c.createBiquadFilter(), g = c.createGain(), lfo = c.createOscillator(), lg = c.createGain();
+        f.type = 'bandpass'; f.frequency.value = 900; f.Q.value = .8; lfo.frequency.value = 1.15; lg.gain.value = .05; g.gain.value = .05;
+        lfo.connect(lg).connect(g.gain); n.connect(f).connect(g).connect(this.out); n.start(t); lfo.start(t);
+        this.panting = { n, lfo, g };
+      } else if (!on && this.panting) { const { n, lfo, g } = this.panting; g.gain.cancelScheduledValues(t); g.gain.setTargetAtTime(0, t, .4); n.stop(t + 2); lfo.stop(t + 2); this.panting = null; }
+    },
+    breathBehind() { // someone breathing, close, behind you; it stops the moment you look
+      if (!this.ctx) return null;
+      const c = this.ctx, t = c.currentTime, n = this.noise(), f = c.createBiquadFilter(), lp = c.createBiquadFilter(), g = c.createGain();
+      f.type = 'bandpass'; f.frequency.value = 700; f.Q.value = .9; lp.type = 'lowpass'; lp.frequency.value = 1600; // muffled: it is behind you
+      g.gain.value = 0;
+      for (let k = 0; k < 5; k++) { const a = t + .4 + k * 1.7; g.gain.setTargetAtTime(.22, a, .25); g.gain.setTargetAtTime(.02, a + .7, .18); g.gain.setTargetAtTime(.14, a + .95, .3); g.gain.setTargetAtTime(0, a + 1.45, .15); }
+      let dst = this.out; if (c.createPanner && this.L) { const [x, y, z] = this.around(Math.PI, 1.1); const pn = this.at(x, y, z, .6); pn.connect(this.out); dst = pn; } // right behind your head
+      n.connect(f).connect(lp).connect(g).connect(dst); n.start(t); n.stop(t + 10);
+      return { stop: () => { const t2 = c.currentTime; g.gain.cancelScheduledValues(t2); g.gain.setValueAtTime(0, t2); try { n.stop(t2 + .05); } catch (e) { /* already stopped */ } } };
+    },
     click() {
       if (!this.ctx) return;
       const c = this.ctx, t = c.currentTime, s = this.noise(), f = c.createBiquadFilter(), g = c.createGain();
@@ -523,8 +599,9 @@
     toggle() {
       this.on = !this.on;
       store.set('sound', this.on);
-      if (this.out) this.out.gain.setTargetAtTime(this.on ? .9 : 0, this.ctx.currentTime, .08);
-    }
+      this.volume();
+    },
+    volume() { if (this.out) this.out.gain.setTargetAtTime(this.on ? SET.vol : 0, this.ctx.currentTime, .08); }
   };
   document.addEventListener('visibilitychange', () => {
     if (!Sound.ctx) return;
@@ -538,14 +615,28 @@
   const hud = {
     sub: $('[data-sub]'), prompt: $('[data-prompt]'), meter: $('[data-meter]'), rec: $('[data-rec]'),
     journal: $('[data-journal]'), sound: $('[data-sound]'), quality: $('[data-quality]'), veil: $('[data-veil]'), card: $('[data-card]'),
-    loading: $('[data-loading]'), loadBar: $('[data-load-bar]'), loadText: $('[data-load-text]'), stick: $('[data-stick]'), fall: $('[data-fall]')
+    loading: $('[data-loading]'), loadBar: $('[data-load-bar]'), loadText: $('[data-load-text]'), stick: $('[data-stick]'), settings: $('[data-settings]'), setBtn: $('[data-settings-btn]'), fps: $('[data-fps]'), fall: $('[data-fall]'), watch: $('[data-watch]'), flash: $('[data-flash]'), still: $('[data-still]')
   };
   let subTimer = 0;
-  function say(text, ms = 5200) {
+  // subtitles wait their turn: a line is on screen long enough to read before the next one replaces it
+  const subQueue = []; let subShownAt = 0, subMin = 0;
+  function showSub(text, ms) {
     clearTimeout(subTimer);
     setText(hud.sub, text);
     hud.sub.classList.add('in');
-    subTimer = setTimeout(() => hud.sub.classList.remove('in'), ms);
+    subShownAt = performance.now(); subMin = Math.min(ms, 1200 + text.length * 45);
+    subTimer = setTimeout(() => { hud.sub.classList.remove('in'); if (subQueue.length) setTimeout(nextSub, 350); }, ms);
+  }
+  function nextSub() { const n = subQueue.shift(); if (n) showSub(n[0], n[1]); }
+  function say(text, ms = 5200) {
+    if (subQueue.some(q => q[0] === text) || (hud.sub.textContent === text && hud.sub.classList.contains('in'))) return; // the same line twice says nothing new
+    const shown = performance.now() - subShownAt;
+    if (hud.sub.classList.contains('in') && shown < subMin) { // the current line has not been read yet
+      subQueue.push([text, ms]); if (subQueue.length > 3) subQueue.shift();
+      clearTimeout(subTimer); subTimer = setTimeout(() => { hud.sub.classList.remove('in'); setTimeout(nextSub, 350); }, subMin - shown);
+      return;
+    }
+    subQueue.length = 0; showSub(text, ms);
   }
   function card(html, ms) {
     hud.card.innerHTML = html;
@@ -562,6 +653,28 @@
   syncJournalButton();
   const savedLow = store.get('low', null);
   const Q = { low: typeof savedLow === 'boolean' ? savedLow : touch };
+  // settings: sensitivity, field of view, subtitle size, calm mode, invert, frame rate, volume
+  function applySettings() {
+    document.body.dataset.sub = SET.sub; hud.fps.hidden = !SET.fps;
+    if (Sound.ctx) Sound.volume();
+  }
+  function openSettings() {
+    const p = hud.settings; if (!p) return;
+    p.querySelector('[name=sens]').value = SET.sens; p.querySelector('[name=fov]').value = SET.fov; p.querySelector('[name=vol]').value = SET.vol;
+    p.querySelector('[name=sub]').value = SET.sub; p.querySelector('[name=calm]').checked = SET.calm; p.querySelector('[name=fps]').checked = SET.fps; p.querySelector('[name=invert]').checked = store.get('invert', false);
+    p.hidden = false; game.pause(); p.querySelector('[name=sens]').focus({ preventScroll: true });
+  }
+  function closeSettings() { hud.settings.hidden = true; hud.setBtn.focus({ preventScroll: true }); game.resume(); }
+  if (hud.settings) {
+    hud.settings.addEventListener('input', e => {
+      const el = e.target, k = el.name;
+      if (k === 'sens' || k === 'fov' || k === 'vol') SET[k] = +el.value; else if (k === 'sub') SET.sub = el.value; else if (k === 'calm' || k === 'fps') SET[k] = el.checked; else if (k === 'invert') store.set('invert', el.checked);
+      saveSet(); applySettings();
+    });
+    hud.settings.querySelector('[data-settings-close]').addEventListener('click', closeSettings);
+    hud.setBtn.addEventListener('click', openSettings);
+  }
+  applySettings();
   const syncQuality = () => { hud.quality.textContent = Q.low ? 'Detail: low' : 'Detail: high'; };
   syncQuality();
 
@@ -712,6 +825,7 @@
       brass: new THREE.MeshStandardMaterial({ color: 0xb08d4a, roughness: .35, metalness: .9 }),
       glass: new THREE.MeshPhysicalMaterial({ color: 0xbfd0e6, roughness: .04, metalness: 0, transparent: true, opacity: .16, envMapIntensity: 1.2, side: THREE.DoubleSide, depthWrite: false }),
       tape: new THREE.MeshStandardMaterial({ color: 0x151517, roughness: .45 }),
+      pawprint: new THREE.MeshBasicMaterial({ color: 0x2a221c, transparent: true, opacity: .55, depthWrite: false }),
       label: (name, emissive = 0x1a1a18) => { const t = T(name, { srgb: true, aniso: 2 }); return new THREE.MeshStandardMaterial({ map: t, roughness: 1, emissive, emissiveMap: t, emissiveIntensity: 1 }); },
       paper: new THREE.MeshStandardMaterial({ color: 0xf1eee6, roughness: 1, side: THREE.DoubleSide, emissive: 0x2a2a28 }),
       yellow: new THREE.MeshStandardMaterial({ color: 0xd9b23a, roughness: .5, emissive: 0x2a2208 }),
@@ -1075,6 +1189,8 @@
     torch.shadow.camera.near = .12; torch.shadow.camera.far = 34; torch.shadow.bias = -.0002; torch.shadow.normalBias = .02; torch.shadow.radius = Q.low ? 2 : 4; torch.shadow.blurSamples = Q.low ? 6 : 8;
     torch.map = cookie;
     camera.add(torch); camera.add(torch.target); torch.target.position.set(.05, -.3, -1);
+    const dayHemi = new THREE.HemisphereLight(0xf3f6ff, 0xd8cdbd, 0); scene.add(dayHemi); // Vermont, and only Vermont
+    const daySun = new THREE.DirectionalLight(0xfff2e0, 0); daySun.position.set(-296, 6, -8); daySun.target.position.set(-300, 0, 0); scene.add(daySun, daySun.target);
     const halo = new THREE.PointLight(0xffe6c8, 1.4, 6, 2); // what the beam scatters back around you
     halo.position.set(0, -.3, -.2); camera.add(halo);
     scene.add(camera);
@@ -1114,6 +1230,8 @@
         carve(L - 1, L + 7, 71, 83);
         carve(L + 8, L + 9, 76, 78); carve(L + 10, L + 15, 75, 79);
         carve(L + 1, L + 3, 62, 70); carve(L + 3, L + 5, 84, 92);
+      } else if (phase === 'karen') { // one straight corridor; it does not stay as long as it looks
+        L = 140; G.hallStart = 9999; carve(0, L, 76, 78);
       } else if (phase === 'empty') { // nothing but corridor, wider as it goes, and from a certain point no ceiling at all
         L = W - 3; G.hallStart = 9999;
         for (let i = 0; i < W - 3; i++) { if (i >= 108 && i < 126) carve(i, i, 77, 78); else { const half = 1 + Math.floor(Math.max(0, i - 60) / 26); carve(i, i, 77 - half, 77 + half); } }
@@ -1270,12 +1388,47 @@
       { label: 'A trunk. Not theirs.', chapter: 'introduction', keep: true, reach: 1.6 });
     block(4.6, 11.2, 1, .6);
     pickup('tape1', 7.4, 1.16, 12.2, tapeBuild(M.labelTape1), { label: 'A Hi8 tape. In marker: ASH TREE LANE, 1.', chapter: 'ch1' });
-    pickup('tape_measure', 1.1, .94, 8.6, g => { add(g, mesh(new THREE.BoxGeometry(.075, .07, .035), M.yellow), 0, .035, 0); add(g, mesh(new THREE.BoxGeometry(.4, .002, .016), M.paper), .25, .01, 0); add(g, mesh(new THREE.BoxGeometry(.012, .02, .02), M.metal), .45, .01, 0); }, { label: 'A tape measure, left open on the counter.', chapter: 'ch2' });
+    pickup('tape_measure', 1.1, .94, 8.6, g => { add(g, mesh(new THREE.BoxGeometry(.075, .07, .035), M.yellow), 0, .035, 0); add(g, mesh(new THREE.BoxGeometry(.4, .002, .016), M.paper), .25, .01, 0); add(g, mesh(new THREE.BoxGeometry(.012, .02, .02), M.metal), .45, .01, 0); }, { label: 'A tape measure, left open on the counter.', tool: 'tape', reach: 2 });
     pickup('tape2', 7, .02, 2.6, tapeBuild(M.labelTape2), { label: 'A Hi8 tape. In marker: 5½.', chapter: 'ch3' });
     pickup('photo', 3.7, .345, .49, g => { const p = add(g, mesh(new THREE.PlaneGeometry(.1, .05), M.tagPhoto), 0, .003, 0); p.rotation.x = -Math.PI / 2; p.rotation.z = -.4; p.material.side = THREE.DoubleSide; add(g, mesh(new THREE.BoxGeometry(.11, .002, .13), M.white), 0, .001, 0).rotation.y = -.4; }, { label: 'A photograph, face down. On the back, in pencil: K., 1989.', chapter: 'karen' });
     pickup('samples', 3.9, .77, 8.75, g => { const bag = add(g, mesh(new THREE.BoxGeometry(.14, .05, .1), new THREE.MeshStandardMaterial({ color: 0xcfd2d6, roughness: .3, transparent: true, opacity: .75 })), 0, .025, 0); bag.rotation.y = .3; add(g, mesh(new THREE.BoxGeometry(.11, .025, .08), M.ash), 0, .02, 0).rotation.y = .3; const tag = add(g, mesh(new THREE.PlaneGeometry(.09, .045), M.tagSample), .06, .004, .07); tag.rotation.x = -Math.PI / 2; tag.rotation.z = .9; tag.material.side = THREE.DoubleSide; }, { label: 'A specimen bag of gray dust, tagged in Reston’s hand.', chapter: 'samples' });
     const frontDoor = pickup('front_door', 2.5, 1, 12.92, g => { add(g, mesh(boxUV(new THREE.BoxGeometry(1, 2.05, .06), 1, 2.05, .06, 1), M.wood), 0, 0, 0); for (const y of [.55, -.15, -.75]) add(g, mesh(new THREE.BoxGeometry(.7, .45, .012), M.wood), 0, y, .035); add(g, mesh(new THREE.SphereGeometry(.03, 10, 8), M.brass), .38, -.05, .05); add(g, mesh(new THREE.BoxGeometry(.06, .11, .01), M.brass), .38, -.2, .035); }, { label: 'The front door.', door: 'front', reach: 1.8 });
     block(2.5, 12.95, 1, .2);
+
+    // the measuring: inside, wall to wall along the hall; then outside, the same wall, leaning out of the children's window
+    const FRAC = n16 => ({ 4: 'and a quarter', 5: 'and five-sixteenths', 6: 'and three-eighths', 7: 'and seven-sixteenths', 8: 'and a half', 9: 'and nine-sixteenths', 10: 'and five-eighths' })[Math.min(10, n16)] || 'and a little';
+    let measurePickups = null, tapeLine = null;
+    function placeMeasuring() {
+      if (measurePickups) return;
+      const mark = (id, x, y, z, ry, label) => pickup(id, x, y, z, g => { const m = add(g, mesh(new THREE.PlaneGeometry(.012, .09), M.dark), 0, 0, 0); m.rotation.y = ry; const t = add(g, mesh(new THREE.PlaneGeometry(.05, .006), M.dark), 0, .03, 0); t.rotation.y = ry; }, { label, measure: id, keep: true, reach: 1.9 });
+      measurePickups = [
+        mark('measure_in', 13.9, .95, 4.65, -Math.PI / 2, 'A pencil mark on the east wall of the hall. Hook the tape here and walk it to the west wall.'),
+        mark('measure_out', 13.9, 1.3, 2.4, -Math.PI / 2, 'The window. Lean out and run the tape along the outside of the same wall.')
+      ];
+      measurePickups[1].visible = false; measurePickups[1].userData.hidden = true;
+    }
+    function measure(which) {
+      const n16 = (found.has('ch3') ? 5 : 4) + store.get('endings', 0); // it has grown since the morning, and it grows between visits
+      if (which === 'measure_in') {
+        Sound.tapeZip(1.3);
+        if (!tapeLine) { tapeLine = new THREE.Mesh(new THREE.BoxGeometry(1, .004, .016), M.yellow); scene.add(tapeLine); }
+        tapeLine.visible = true; tapeLine.userData.t = 0;
+        S.measuredIn = true;
+        say(`Inside, wall to wall: forty-five feet eleven ${FRAC(n16)} inches.`, 7000);
+        if (measurePickups && measurePickups[1].userData.hidden) { measurePickups[1].visible = true; measurePickups[1].userData.hidden = false; setTimeout(() => say('Now the same wall from the outside. The window in the children’s room opens.', 7000), 7200); }
+        else if (found.has('ch2') && !S.remeasured) { S.remeasured = true; setTimeout(() => say(n16 > 4 ? 'It was a quarter of an inch this morning.' : 'The same quarter of an inch. It is still there.', 6000), 7200); }
+      } else {
+        if (!S.measuredIn) { say('Measure the inside first. The pencil mark in the hall.', 5000); return; }
+        Sound.tapeZip(1.6);
+        say('Outside, the same wall: forty-five feet eleven inches.', 5000);
+        if (!found.has('ch2')) setTimeout(() => { say(n16 > 4 ? 'The inside is bigger than the outside. By more than it was.' : 'The inside is bigger than the outside. By a quarter of an inch.', 6000); setTimeout(() => unlock('ch2'), 3500); }, 5200);
+        else setTimeout(() => say('The inside is still bigger than the outside.', 5000), 5200);
+      }
+    }
+    // Delial, face down
+    pickup('delial', 11.2, .421, 7.72, g => { add(g, mesh(new THREE.BoxGeometry(.13, .003, .1), M.white), 0, .0015, 0).rotation.y = .5; }, { label: 'A photograph, face down. On the back, in pencil: Delial.', say: 'You do not turn it over. Navidson never could either.', keep: true, reach: 1.8 });
+    // the second visit: a door that was not here last time
+    if (store.get('endings', 0) > 0) pickup('new_door', 6.09, 1.02, 9.7, g => { add(g, mesh(new THREE.BoxGeometry(.05, 2.04, .9), M.wood), 0, 0, 0); add(g, mesh(new THREE.SphereGeometry(.03, 10, 8), M.brass), .05, -.02, .35); }, { label: 'A door. It was not here last time.', say: 'It opens onto the wall behind it. Plaster, then brick, then nothing you can get a fingernail into.', keep: true, reach: 1.8 });
 
     // in the hallway, placed once it exists
     let mazePickups = [];
@@ -1324,7 +1477,7 @@
       put(pickup('map', G.stair.x - 4.8, .01, G.stair.z - 2.4, pageBuild(M.map, .42, .32), { label: 'A hand-drawn map. It stops at the stairs.', chapter: 'explorations' }));
       if (!S.quarterAt) put(pickup('quarter', G.stair.x - WELL - .6, .012, G.stair.z + 1.7, g => { add(g, mesh(new THREE.CylinderGeometry(.012, .012, .002, 16), M.metal), 0, .001, 0); }, { label: 'A quarter. Drop it into the well and listen.', quarter: true, reach: 1.6 }));
     }
-    let stairPickups = { markers: null, camera: null, jed: null };
+    let stairPickups = { markers: null, camera: null, jed: null, hollEnd: null };
     function placeStairPickups() {
       if (!stairPickups.markers && !found.has('ch6')) {
         const [x, y, z] = onStair(8);
@@ -1333,6 +1486,27 @@
       if (!stairPickups.jed) {
         const [x, y, z] = onStair(22);
         stairPickups.jed = pickup('jed', x, y, z, g => { add(g, mesh(new THREE.BoxGeometry(.14, .025, .1), new THREE.MeshStandardMaterial({ color: 0x3a1c1c, roughness: 1 })), 0, .012, 0).rotation.y = .6; add(g, mesh(new THREE.BoxGeometry(.06, .015, .06), M.white), .1, .008, .05); }, { label: 'A bandage, stiff with blood. Jed kept Wax alive here for two days.', say: 'Two days. He talked to him the whole time, so that he would stay.', stairDepth: 22 });
+      }
+      if (!stairPickups.hollEnd) {
+        // his markers and his shell casings, lower than anyone else went
+        for (const [d, r, what] of [[34, 1.2, 'm'], [36.5, 2.1, 'c'], [39, 1.5, 'm'], [41.5, 2.4, 'c'], [44, 1.1, 'c'], [46.5, 1.8, 'm'], [49, 2.2, 'c']]) {
+          const [x, y, z] = onStair(d, r);
+          const m = what === 'm' ? new THREE.Mesh(new THREE.PlaneGeometry(.05, .28), M.orange) : new THREE.Mesh(new THREE.CylinderGeometry(.006, .006, .045, 8), M.brass);
+          if (what === 'm') { m.rotation.x = -Math.PI / 2; m.rotation.z = hash(d) * 3; m.position.set(x, y + .004, z); } else { m.rotation.z = Math.PI / 2; m.rotation.y = hash(d) * 6; m.position.set(x, y + .006, z); }
+          scene.add(m);
+        }
+        const [x, y, z, a] = onStair(52, 1.3);
+        stairPickups.hollEnd = pickup('holloway_end', x, y, z, g => {
+          add(g, mesh(new THREE.BoxGeometry(.95, .035, .045), M.dark), 0, .025, 0).rotation.y = .9; add(g, mesh(new THREE.BoxGeometry(.32, .07, .06), M.wood), -.36, .035, .3).rotation.y = .9;
+          for (let k = 0; k < 4; k++) add(g, mesh(new THREE.CylinderGeometry(.006, .006, .045, 8), M.brass), .2 + hash(k) * .3, .006, -.1 + hash(k + 5) * .3).rotation.z = Math.PI / 2;
+        }, { label: 'A rifle, empty. Four shells. The column is scratched at the height of a man’s hands.', stairDepth: 52, keep: true });
+        // the scratches, on the column, facing the tread
+        const cv = document.createElement('canvas'); cv.width = 256; cv.height = 256; const cx = cv.getContext('2d');
+        cx.strokeStyle = 'rgba(235, 232, 225, .85)'; cx.lineCap = 'round';
+        for (let k = 0; k < 26; k++) { const x0 = 40 + hash(k) * 176, y0 = 30 + hash(k + 40) * 120; cx.lineWidth = 1 + hash(k + 9) * 2.2; cx.beginPath(); cx.moveTo(x0, y0); cx.lineTo(x0 + (hash(k + 3) - .5) * 30, y0 + 50 + hash(k + 7) * 70); cx.stroke(); }
+        const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
+        const scr = new THREE.Mesh(new THREE.CylinderGeometry(.426, .426, .8, 16, 1, true, Math.PI / 2 - a - .45, .9), new THREE.MeshStandardMaterial({ map: tex, transparent: true, alphaTest: .1, roughness: .9, depthWrite: false }));
+        scr.position.set(G.stair.x, y + 1.05, G.stair.z); scene.add(scr);
       }
       if (!stairPickups.camera && !found.has('ch7')) {
         const [x, y, z, a] = onStair(30);
@@ -1368,6 +1542,8 @@
       if (e.code === 'KeyE' || e.code === 'Enter') { if (target) { interact(target); e.preventDefault(); } }
       if (e.code === 'Space') { jump(); e.preventDefault(); }
       if (e.code === 'KeyJ') { openJournal(jPage.dataset.id); e.preventDefault(); }
+      if (e.code === 'KeyC') { takeStill(); e.preventDefault(); }
+      if (e.code === 'KeyO') { openSettings(); e.preventDefault(); }
       if (e.code === 'KeyI') { const inv = !store.get('invert', false); store.set('invert', inv); say(inv ? 'Mouse inverted. I again to put it back.' : 'Mouse as it was.', 3000); e.preventDefault(); }
     });
     addEventListener('keyup', e => { if (KEYMAP[e.code]) keys.delete(KEYMAP[e.code]); });
@@ -1386,7 +1562,7 @@
     });
     document.addEventListener('mousemove', e => {
       if (!document.pointerLockElement) return;
-      P.yaw -= e.movementX * .0021; P.pitch = clamp(P.pitch - e.movementY * .0021 * (store.get('invert', false) ? -1 : 1), -1.35, 1.35);
+      const k = .0021 * SET.sens; P.yaw -= e.movementX * k; P.pitch = clamp(P.pitch - e.movementY * k * (store.get('invert', false) ? -1 : 1), -1.35, 1.35);
     });
     // touch: left half walks, the rest looks
     const fingers = new Map();
@@ -1403,7 +1579,7 @@
       for (const t of e.changedTouches) {
         const f = fingers.get(t.identifier); if (!f) continue;
         if (f.move) { stick.dx = clamp((t.clientX - f.x0) / 60, -1, 1); stick.dz = clamp((t.clientY - f.y0) / 60, -1, 1); if (hud.stick) hud.stick.firstElementChild.style.transform = `translate(calc(-50% + ${stick.dx * 34}px), calc(-50% + ${stick.dz * 34}px))`; }
-        else { P.yaw -= (t.clientX - f.x) * .0048; P.pitch = clamp(P.pitch - (t.clientY - f.y) * .0048, -1.35, 1.35); }
+        else { P.yaw -= (t.clientX - f.x) * .0048 * SET.sens; P.pitch = clamp(P.pitch - (t.clientY - f.y) * .0048 * SET.sens, -1.35, 1.35); }
         f.x = t.clientX; f.y = t.clientY;
       }
       e.preventDefault();
@@ -1450,8 +1626,8 @@
 
     /* ---------- story wiring ---------- */
 
-    const S = { closet: false, hallway: false, torn: false, fleeing: false, explore5: false, arrived: false, grewA: false, turnA: false, regrow: null, regrowText: null, collapsePending: false, collapseT: -1, collapsed: false, doorOpen: false, doorAjar: false, quarterAt: 0, stairShort: false, saidDoor: false, saidAnte: false, farOut: false, saidCam: false, saidBottom: false, falling: 0, kids: 0, radioT: 20, joke: 0, loops: 0, letGo: false, shrinkT: -1, shrunk: false, far: 0 };
-    const mazePhase = () => found.has('ch9') ? 'empty' : found.has('ch7') ? 'short' : found.has('explA') ? 'long' : 'a';
+    const S = { closet: false, hallway: false, torn: false, fleeing: false, explore5: false, arrived: false, grewA: false, turnA: false, regrow: null, regrowText: null, collapsePending: false, collapseT: -1, collapsed: false, doorOpen: false, doorAjar: false, quarterAt: 0, stairShort: false, saidDoor: false, saidAnte: false, farOut: false, saidCam: false, saidBottom: false, falling: 0, gone: 0, clocked: false, measuredIn: false, remeasured: false, pets: false, hollEnd: false, breathN: 0, breath: null, shape: false, kids: 0, radioT: 20, joke: 0, loops: 0, letGo: false, shrinkT: -1, shrunk: false, far: 0 };
+    const mazePhase = () => found.has('ch10') && !found.has('ch11') ? 'karen' : found.has('ch9') ? 'empty' : found.has('ch7') ? 'short' : found.has('explA') ? 'long' : 'a';
     function openCloset(silent) {
       if (S.closet) return; S.closet = true;
       closetPlug.open(); shadowRef.force = true;
@@ -1461,8 +1637,9 @@
       if (S.hallway) return; S.hallway = true;
       hallwayPlug.open();
       buildMaze(mazePhase()); placeMazePickups();
+      for (let k = 0; k < 11; k++) { const f = k / 10, p = new THREE.Mesh(new THREE.CircleGeometry(.035, 8), M.pawprint); p.rotation.x = -Math.PI / 2; p.scale.y = 1.35; p.position.set(10.4 + f * 3.3 + (k % 2 ? .06 : -.06), .006, 9.6 - f * 1.05); scene.add(p); stat(p); } // prints, going in
       placeSteps(true); placeStairPickups(); bakeStatics();
-      if (!silent) { Sound.growl(.35); setTimeout(() => say('The living room has a new door. Behind it, the yard should be.'), 1200); }
+      if (!silent) { Sound.growl(.35); setTimeout(() => say('The living room has a new door. Behind it, the yard should be.'), 1200); setTimeout(() => say('The dog goes in first. Then the cat, as if it had been called.', 6500), 9000); setTimeout(() => { Sound.knock(); say('Scratching at the back door. From the yard. The dog is outside, and nothing in there goes outside.', 8000); }, 26000); }
     }
     function tearHouse(silent) {
       if (S.torn) return; S.torn = true;
@@ -1503,6 +1680,122 @@
       ch9: () => { S.explore5 = true; regrow('empty'); say('The doorway is still there. Navidson went back in alone.', 7000); },
       ch11: () => { unlock('letters', false); unlock('exhibits', false); unlock('index', false); }
     };
+    /* your own exploration: what the counter kept */
+    const stats = Object.assign({ deep: 0, line: 0, quarters: 0, dark: 0, turned: 0, stills: 0 }, store.get('stats', {}));
+    const saveStats = () => store.set('stats', stats);
+    let stills = store.get('stills', []); if (!Array.isArray(stills)) stills = [];
+    let stillReq = false;
+    function grabStill() { // Navidson is a photographer: the camcorder takes a still
+      stillReq = false;
+      const src = renderer.domElement, cv = document.createElement('canvas'); cv.width = 320; cv.height = 180;
+      const k = Math.max(320 / src.width, 180 / src.height), w = src.width * k, h = src.height * k;
+      const cx = cv.getContext('2d'); cx.drawImage(src, (320 - w) / 2, (180 - h) / 2, w, h);
+      cx.fillStyle = 'rgba(255, 70, 60, .9)'; cx.font = '11px monospace'; cx.fillText(hud.rec.textContent, 10, 170);
+      try { stills.push({ url: cv.toDataURL('image/jpeg', .7), rec: hud.rec.textContent }); stills = stills.slice(-12); store.set('stills', stills); } catch (e) { /* no room left: the still is not kept */ }
+      stats.stills++; saveStats();
+      hud.flash.classList.remove('go'); void hud.flash.offsetWidth; hud.flash.classList.add('go');
+      Sound.click(); setTimeout(() => Sound.click(), 90);
+      say(`Still ${stills.length}. It goes in the journal.`, 2200);
+    }
+    const takeStill = () => { if (!game.paused && !game.ended) stillReq = true; };
+
+    /* Karen: she goes in to find him */
+    let karenGlow = null, karenSrc = null, karenCall = 6;
+    function startKaren(resumed) {
+      S.karen = true; S.vermont = false; S.karenDone = false;
+      S.regrow = null; S.regrowText = null; // nothing else is going to rebuild the hallway now
+      if (G.built && G.phase !== 'karen') { buildMaze('karen'); placeMazePickups(); }
+      P.x = 2.5; P.z = 15.6; P.yaw = 0; P.pitch = 0; P.vx = P.vz = 0; camY = 1.6;
+      if (!karenGlow) {
+        karenGlow = new THREE.Sprite(new THREE.SpriteMaterial({ map: moteTex, color: 0xff9a4a, transparent: true, opacity: .95, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
+        karenGlow.scale.set(.9, .9, 1); scene.add(karenGlow); karenSrc = source(0, 0, 0, 0xff9448, 0, 7);
+      }
+      const gx = G.x0 + 56; karenGlow.position.set(gx, .2, G.z0 + 77.5 * G.T); karenSrc.pos.set(gx, .35, G.z0 + 77.5 * G.T); karenSrc.intensity = 2.4; karenGlow.visible = true;
+      Sound.pant(true);
+      if (!resumed) card('<p class="card-kicker">Karen</p><p>She is afraid of the dark, and of small rooms. She has not been inside since the house closed. She goes in anyway.</p><p class="card-help">Her lamp is small. Find him.</p>', 9000);
+      setTimeout(() => say('The front door is open. It opens outward now.', 6000), resumed ? 1500 : 9500);
+    }
+    function karenStep(dt) {
+      if (P.vx > .2 && P.x > G.x0) P.x += P.vx * dt * 1.25; // every step she takes, the corridor gives up a little more
+      const k = (P.x - G.x0) / 56;
+      karenCall -= dt;
+      if (karenCall <= 0 && P.x > G.x0) { karenCall = 8 + Math.random() * 4; Sound.voice({ pitch: 212, dur: .7, level: .5 }); say('“Will?”', 2200); }
+      if (k > .3 && !S.kSaid1) { S.kSaid1 = true; say('It is shorter than it was a moment ago. It is letting her through.', 6000); }
+      if (k > .62 && !S.kSaid2) { S.kSaid2 = true; say('A light on the floor, far ahead. Paper, burning.', 6000); }
+      karenSrc.intensity = 2 + Math.random() * .9; karenGlow.scale.setScalar(.8 + Math.random() * .25);
+      if (k > .97 && !S.karenDone) endKaren();
+    }
+    function endKaren() {
+      S.karenDone = true;
+      Sound.voice({ pitch: 208, dur: .9, level: .65 }); say('“Will.”', 3000);
+      setTimeout(() => { hud.fall.classList.add('white', 'in'); Sound.swell(4.5); Sound.pant(false); }, 1600);
+      setTimeout(() => { enterVermont(); }, 6400);
+    }
+
+    /* Vermont: daylight, snow, a small house the right size */
+    const VX = -300, VZ = 0;
+    let vermont = null;
+    function crayon(draw) { // a child's drawing, in crayon
+      const cv = document.createElement('canvas'); cv.width = 512; cv.height = 384; const cx = cv.getContext('2d');
+      cx.fillStyle = '#f4f1e8'; cx.fillRect(0, 0, 512, 384); cx.lineCap = 'round'; cx.lineJoin = 'round';
+      const line = (pts, col, w = 7) => { cx.strokeStyle = col; cx.lineWidth = w; cx.beginPath(); pts.forEach(([x, y], i) => { const jx = x + (Math.random() - .5) * 4, jy = y + (Math.random() - .5) * 4; i ? cx.lineTo(jx, jy) : cx.moveTo(jx, jy); }); cx.stroke(); };
+      draw(line, cx);
+      const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; return t;
+    }
+    function buildVermont() {
+      if (vermont) return vermont;
+      const g = new THREE.Group(); scene.add(g);
+      const W = 7, D = 5, x0 = VX - W / 2, x1 = VX + W / 2, z0 = VZ - D / 2, z1 = VZ + D / 2;
+      const wall = (w, h, d, x, y, z) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), M.wall); m.position.set(x, y, z); shadowed(m); g.add(m); colliders.push({ x0: x - w / 2, x1: x + w / 2, z0: z - d / 2, z1: z + d / 2 }); return m; };
+      const floor = new THREE.Mesh(new THREE.PlaneGeometry(W, D), M.floor); floor.rotation.x = -Math.PI / 2; floor.position.set(VX, 0, VZ); floor.receiveShadow = true; g.add(floor);
+      const ceil = new THREE.Mesh(new THREE.PlaneGeometry(W, D), M.ceiling); ceil.rotation.x = Math.PI / 2; ceil.position.set(VX, H, VZ); g.add(ceil);
+      // the north wall has a window onto the snow
+      wall(W / 2 - .9, H, TH, x0 + (W / 2 - .9) / 2, H / 2, z0); wall(W / 2 - .9, H, TH, x1 - (W / 2 - .9) / 2, H / 2, z0);
+      wall(1.8, .9, TH, VX, .45, z0); wall(1.8, H - 2.1, TH, VX, 2.1 + (H - 2.1) / 2, z0);
+      wall(W, H, TH, VX, H / 2, z1); wall(TH, H, D, x0, H / 2, VZ); wall(TH, H, D, x1, H / 2, VZ);
+      const pane = new THREE.Mesh(new THREE.PlaneGeometry(1.8, 1.2), M.glass); pane.position.set(VX, 1.5, z0); g.add(pane);
+      const out = new THREE.Mesh(new THREE.PlaneGeometry(60, 20), new THREE.MeshBasicMaterial({ color: 0xc3ccd8, fog: false })); out.position.set(VX, 4, z0 - 14); g.add(out); // a low winter sky
+      for (let k = 0; k < 14; k++) { const hgt = 2.5 + hash(k) * 3.5, tr = new THREE.Mesh(new THREE.ConeGeometry(.5 + hash(k + 3) * .6, hgt, 7), new THREE.MeshBasicMaterial({ color: 0x55606b })); tr.position.set(VX - 9 + k * 1.4 + hash(k + 7) * .8, hgt / 2, z0 - 7 - hash(k + 11) * 5); g.add(tr); } // pines, gray with distance and snow
+      const snowField = new THREE.Mesh(new THREE.PlaneGeometry(60, 12), new THREE.MeshBasicMaterial({ color: 0xe9edf2 })); snowField.rotation.x = -Math.PI / 2; snowField.position.set(VX, -.02, z0 - 6.2); g.add(snowField);
+      // snow, falling past the window
+      const n = 420, pos = new Float32Array(n * 3); for (let i = 0; i < n; i++) { pos[i * 3] = VX - 4 + Math.random() * 8; pos[i * 3 + 1] = Math.random() * 4; pos[i * 3 + 2] = z0 - .4 - Math.random() * 7; }
+      const sg = new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+      const snow = new THREE.Points(sg, new THREE.PointsMaterial({ color: 0xffffff, size: .06, map: moteTex, transparent: true, opacity: 1, depthWrite: false })); snow.frustumCulled = false; g.add(snow);
+      const inner = source(VX + 1.5, 2.1, VZ + 1.2, 0xffdcb0, 2.2, 8); inner.vermont = true; // the light of a room people live in
+      // the children's drawings, on the south wall
+      const drawings = [
+        crayon((line, cx) => { line([[70, 300], [70, 170], [170, 90], [270, 170], [270, 300], [70, 300]], '#3b5bd6'); line([[150, 300], [150, 225], [195, 225], [195, 300]], '#c43b2f'); line([[270, 250], [500, 250]], '#222', 5); line([[270, 272], [500, 272]], '#222', 5); cx.fillStyle = '#222'; cx.font = 'bold 28px Comic Sans MS, cursive'; cx.fillText('OUR HOUSE', 60, 360); }),
+        crayon((line) => { const pts = []; for (let a = 0; a < 26; a += .2) pts.push([256 + Math.cos(a) * (170 - a * 6), 190 + Math.sin(a) * (130 - a * 4.5)]); line(pts, '#444', 6); line([[256, 190], [258, 196]], '#e2a21a', 16); }),
+        crayon((line, cx) => { const fig = (x, h, col) => { line([[x, 300 - h], [x, 300 - h * .35]], col); line([[x, 300 - h * .35], [x - 22, 300]], col); line([[x, 300 - h * .35], [x + 22, 300]], col); line([[x - 30, 300 - h * .7], [x + 30, 300 - h * .7]], col); cx.strokeStyle = col; cx.lineWidth = 6; cx.beginPath(); cx.arc(x, 300 - h - 20, 20, 0, Math.PI * 2); cx.stroke(); }; fig(110, 170, '#2f6fc4'); fig(220, 150, '#c43b8e'); fig(320, 100, '#2c9e4b'); fig(400, 85, '#e07a1a'); line([[440, 70], [500, 20]], '#f2c21a', 10); cx.fillStyle = '#f2c21a'; cx.beginPath(); cx.arc(470, 50, 26, 0, Math.PI * 2); cx.fill(); })
+      ];
+      drawings.forEach((tex, i) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(.62, .46), new THREE.MeshStandardMaterial({ map: tex, roughness: 1 })); m.position.set(VX - 1.5 + i * 1.05, 1.45 + (i % 2) * .08, z1 - .09); m.rotation.y = Math.PI; m.rotation.z = (i - 1) * .04; g.add(m); });
+      // Reston's chair, against the east wall
+      const chair = new THREE.Group(); chair.position.set(x1 - .45, 0, VZ + .9); chair.rotation.y = -Math.PI / 2 + .2;
+      for (const s of [-1, 1]) { const w = new THREE.Mesh(new THREE.TorusGeometry(.3, .018, 8, 32), M.metal); w.position.set(s * .27, .32, 0); w.rotation.y = Math.PI / 2; chair.add(w); const f = new THREE.Mesh(new THREE.TorusGeometry(.07, .015, 6, 16), M.dark); f.position.set(s * .2, .08, .38); f.rotation.y = Math.PI / 2; chair.add(f); }
+      const seat = new THREE.Mesh(new THREE.BoxGeometry(.46, .05, .44), M.leather); seat.position.set(0, .48, .05); chair.add(seat);
+      const back = new THREE.Mesh(new THREE.BoxGeometry(.46, .5, .04), M.leather); back.position.set(0, .78, -.17); chair.add(back);
+      chair.traverse(o => { if (o.isMesh) shadowed(o); }); g.add(chair); block(chair.position.x, chair.position.z, .7, .7);
+      // a table, and the finished film on it
+      const top = new THREE.Mesh(new THREE.BoxGeometry(1.2, .05, .7), M.wood); top.position.set(VX + .6, .74, VZ + .4); shadowed(top); g.add(top);
+      for (const [dx, dz] of [[-.55, -.3], [.55, -.3], [-.55, .3], [.55, .3]]) { const l = new THREE.Mesh(new THREE.BoxGeometry(.05, .72, .05), M.wood); l.position.set(VX + .6 + dx, .36, VZ + .4 + dz); g.add(l); }
+      block(VX + .6, VZ + .4, 1.2, .7);
+      pickup('record', VX + .6, .765, VZ + .4, gg => { add(gg, mesh(new THREE.BoxGeometry(.34, .12, .22), M.cardboard), 0, .06, 0).rotation.y = .2; for (let k = 0; k < 3; k++) add(gg, mesh(new THREE.BoxGeometry(.095, .017, .063), M.tape), -.05 + k * .05, .128 + k * .018, 0).rotation.y = .3 + k * .2; }, { label: 'A box of tapes. On the lid, in Karen’s hand: THE NAVIDSON RECORD.', finale: true, reach: 2 });
+      vermont = { g, snow, z0 };
+      return vermont;
+    }
+    function enterVermont(resumed) {
+      buildVermont();
+      S.vermont = true; S.karen = false; if (karenGlow) { karenGlow.visible = false; karenSrc.intensity = 0; }
+      Sound.pant(false); Sound.ambience(false); Sound.weather(false); Sound.groan(false);
+      if (!S.vwind) S.vwind = Sound.loop('wind', .1, 4);
+      P.x = VX - 1.6; P.z = VZ + 1.3; P.yaw = Math.atan2(-(VX + .4 - P.x), -(VZ - 2.5 - P.z)); P.pitch = 0; P.vx = P.vz = 0; camY = 1.6; shadowRef.force = true;
+      unlock('ch11', false); unlock('explSix', false);
+      if (!resumed) {
+        setTimeout(() => { hud.fall.classList.remove('in'); setTimeout(() => hud.fall.classList.remove('white'), 2600); }, 300);
+        for (const [ms, text] of [[2500, 'Vermont. It has been snowing since before anyone woke.'], [9000, 'Karen is outside with the children. The house on Ash Tree Lane is a long way south, and the right size.'], [16500, 'Navidson has not picked up a camera since. The tapes are on the table.']]) setTimeout(() => { if (!game.ended) say(text, 6500); }, ms);
+      }
+    }
+
     // resume a house left half-explored
     if (found.has('ch2')) openCloset(true);
     if (found.has('ch3')) openHallway(true);
@@ -1519,6 +1812,7 @@
       const py = camY;
       for (const p of pickups) {
         if (p.userData.stairDepth != null && !stair.active) continue;
+        if (p.userData.hidden) continue;
         const dx = p.position.x - P.x, dz = p.position.z - P.z, dy = p.position.y - py;
         const d = Math.hypot(dx, dz, dy * .6), reach = p.userData.reach || 2.3;
         if (d > reach || d >= bd) continue;
@@ -1542,8 +1836,12 @@
         return;
       }
       if (u.quarter) { dropQuarter(p); return; }
+      if (u.finale) { Sound.click(); finish(); return; }
+      if (u.tool === 'tape') { Sound.click(); scene.remove(p); dropPickup(p); target = null; hud.prompt.hidden = true; placeMeasuring(); say('Navidson measured everything. Start where the house is widest: the hall, wall to wall.', 8000); return; }
+      if (u.measure) { if (!u.hidden) measure(u.measure); return; }
       const TAPE = { tape1: [118, 5], tape2: [118, 4], navidson_cam: [118, 6], holloway_cam: [96, 7], tom: [128, 6], karen_tapes: [212, 6], radio: [128, 5, true] }; // who is on the tape, for how long
       if (TAPE[u.id]) { const [pitch, dur, radio] = TAPE[u.id]; Sound.voice({ pitch, dur, radio: !!radio, level: .42, at: .5 }); }
+      if (u.id === 'holloway_end') { if (!S.hollEnd) { S.hollEnd = true; Sound.voice({ pitch: 94, dur: 9, level: .5, at: 1 }); setTimeout(() => say('On the tape he says his name, and where he was born, and that he is sorry. Then, for a long time, he says nothing anyone would want to hear.', 9000), 5500); } }
       if (u.say) say(u.say);
       if (u.chapter) {
         Sound.click();
@@ -1567,10 +1865,38 @@
       bakeStatics();
       Sound.growl(1.3); shake = 2; torchDip = 1;
       say('The house is closing.', 4000);
-      for (const [ms, text] of [[4500, 'Tom has Daisy. Chad is out. The front door.'], [11000, 'The floor is going.'], [18000, 'Get out of the house.']]) setTimeout(() => { if (S.collapseT >= 0) say(text, 5000); }, ms);
+      for (const [ms, text] of [[4500, 'Tom has Daisy. Chad is out. The front door.'], [9500, 'The floor is going.'], [17500, 'Tom does not come up.'], [21500, 'Get out of the house.']]) setTimeout(() => { if (S.collapseT >= 0) say(text, 5000); }, ms);
+    }
+    // Tom, seen only as his light: across the living room, to the edge, and down
+    let tomLight = null;
+    const tomSrc = source(0, 0, 0, 0xffe2b8, 0, 6);
+    function tomStep(ct) {
+      if (ct < 7 || ct > 17) { if (tomLight && ct > 17) { scene.remove(tomLight); tomLight = null; tomSrc.intensity = 0; } return; }
+      if (!tomLight) {
+        tomLight = new THREE.Group();
+        const beamGeo = new THREE.ConeGeometry(.75, 4.5, 20, 1, true); beamGeo.translate(0, -2.25, 0); beamGeo.rotateX(-Math.PI / 2); // apex at the lamp, opening forward (+z)
+        const beam = new THREE.Mesh(beamGeo, new THREE.MeshBasicMaterial({ color: 0xfff0d0, transparent: true, opacity: .06, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+        const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: moteTex, color: 0xfff0d6, transparent: true, opacity: .9, blending: THREE.AdditiveBlending, depthWrite: false }));
+        glow.scale.set(.35, .35, 1); tomLight.add(beam, glow); tomLight.userData.beam = beam; scene.add(tomLight);
+      }
+      const a = new THREE.Vector3(6.4, 1.1, 7.6), b = new THREE.Vector3(9.2, 1.05, 9.8), pit = new THREE.Vector3(9.4, 1, 10.3);
+      if (ct < 12) { // crossing the room, quickly, with something in his arms
+        const k = (ct - 7) / 5, e = k * k * (3 - 2 * k);
+        tomLight.position.lerpVectors(a, b, e); tomLight.position.y += Math.abs(Math.sin(ct * 9)) * .05;
+        tomLight.lookAt(k < .8 ? b.x + 1 : 12.5, .7, k < .8 ? b.z + 1.2 : 12.8); // toward the door, then back
+        tomSrc.intensity = 1.6;
+      } else { // the floor is not there
+        if (!tomLight.userData.fell) { tomLight.userData.fell = true; Sound.growl(1.1, [0, 0]); Sound.play('door_close', { gain: 1, rate: .6 }); shake = 2; torchDip = 1; setTimeout(() => Sound.hush(3.2), 1400); }
+        const f = ct - 12;
+        tomLight.position.set(pit.x, pit.y - 4.9 * f * f, pit.z); tomLight.rotation.x += .19; tomLight.rotation.z += .11; // it turns over and over
+        tomLight.userData.beam.material.opacity = .06 * Math.max(0, 1 - f / 4);
+        tomSrc.intensity = Math.max(0, 1.6 - f * .6);
+      }
+      tomSrc.pos.copy(tomLight.position);
     }
     function collapseStep(dt) {
       S.collapseT += dt;
+      tomStep(S.collapseT);
       const k = clamp(S.collapseT / 26, 0, 1), e = k * k * (3 - 2 * k);
       for (const w of houseWalls) if (w.lean1 && w.mesh.parent) { w.mesh.rotation.x = w.lean0[0] + (w.lean1[0] - w.lean0[0]) * e; w.mesh.rotation.z = w.lean0[1] + (w.lean1[1] - w.lean0[1]) * e; }
       houseCeiling.position.y = (S.torn ? H + .6 : H) - .9 * e;
@@ -1606,12 +1932,13 @@
     }
     function dropQuarter(p) {
       scene.remove(p); dropPickup(p); target = null; hud.prompt.hidden = true;
-      S.quarterAt = t; Sound.coin(); say('Listen.', 2500); setTimeout(() => say('You will not hear it land.', 7000), 7000);
+      S.quarterAt = t; stats.quarters++; saveStats(); Sound.coin(); say('Listen.', 2500); setTimeout(() => say('You will not hear it land.', 7000), 7000);
     }
     const panTo = (x, z) => { const dx = x - P.x, dz = z - P.z, d = Math.hypot(dx, dz) || 1; return clamp((dx * Math.cos(P.yaw) - dz * Math.sin(P.yaw)) / d, -1, 1); };
     // the cold: the hallway holds at freezing, and the deeper you go the less it holds
     const temperature = () => {
       const reg = P.region;
+      if (reg === 'vermont') return 64;
       if (reg === 'house') return S.torn ? 51 : 68;
       if (reg === 'stair') return 32 - Math.min(16, stair.depth() * .3);
       if (G.phase === 'empty') return 31 - Math.min(22, Math.max(0, P.x - G.x0) / 4);
@@ -1684,7 +2011,7 @@
     function explorationA() {
       const fx = -Math.sin(P.yaw);
       if (!S.grewA && P.x > G.x0 + (G.L - 1) * G.T && fx > .4) { S.grewA = true; buildMaze('a', G.L + 30); P.x += 30 * G.T; P.lineOut += 30 * G.T; placeMazePickups(); S.turnA = true; }
-      if (S.turnA && fx < -.5) { S.turnA = false; Sound.knock(); say('The corridor is longer than it was.', 6000); }
+      if (S.turnA && fx < -.5) { S.turnA = false; stats.turned++; Sound.knock(); say('The corridor is longer than it was.', 6000); }
     }
     /* walls that move only when nobody is looking: a doorway you passed is gone, a wall you passed has one */
     let driftT = 16;
@@ -1714,25 +2041,51 @@
       if (Match.running) return;
       game.pause();
       Match.start(() => {
-        unlock('ch10', false); unlock('ch11', false);
+        unlock('ch10', false);
         store.set('again', false);
-        game.ended = true;
-        finish();
+        startKaren(); game.resume();
       }, () => { P.x = 12.8; P.z = 8.5; P.yaw = Math.PI / 2; game.resume(); });
     }
-    const HINTS = { introduction: 'a trunk in the foyer', ch1: 'a tape in the living room', ch2: 'a tape measure in the kitchen', ch3: 'a tape in the closet that was not there', explA: 'a camera at the end of the first corridor', karen: 'a photograph on a nightstand', samples: 'a specimen bag on the kitchen table', explorations: 'a map by the well', ch4: 'a page in the first room off the corridor', ch5: 'a cache in the corridor', ch6: 'markers on the stairs', tom: 'a recorder at the lip of the well', ch7: 'a camera a hundred steps down', rescue: 'a rig at the lip of the well', ch8: 'a radio by the door that should not be there', ch9: 'tapes in the bedroom', well: 'the well itself' };
+    // a card to share: how far down, and what never landed
+    function shareCard() {
+      const cv = document.createElement('canvas'); cv.width = 1200; cv.height = 630; const cx = cv.getContext('2d');
+      cx.fillStyle = '#0b0b0d'; cx.fillRect(0, 0, 1200, 630);
+      const draw = () => {
+        const g = cx.createLinearGradient(0, 0, 0, 630); g.addColorStop(0, 'rgba(11,11,13,.35)'); g.addColorStop(1, 'rgba(11,11,13,.92)'); cx.fillStyle = g; cx.fillRect(0, 0, 1200, 630);
+        cx.fillStyle = '#9a9aa2'; cx.font = '600 22px Georgia, serif'; cx.fillText('ASH TREE LANE', 72, 92);
+        cx.fillStyle = '#efeee9'; cx.font = '54px Georgia, serif';
+        const ft = Math.round(stats.deep);
+        cx.fillText(ft > 0 ? `I went ${ft.toLocaleString('en-US')} feet down` : 'I went into the house', 72, 400);
+        cx.fillText('on Ash Tree Lane.', 72, 466);
+        cx.fillStyle = '#b8b7b0'; cx.font = 'italic 30px Georgia, serif';
+        cx.fillText(stats.quarters > 0 ? 'The quarter is still falling.' : store.get('jumped', 0) > 0 ? 'I jumped. I did not land.' : 'I never heard anything land.', 72, 530);
+        cx.fillStyle = '#6f6f78'; cx.font = '20px monospace'; cx.fillText(location.host + location.pathname.replace(/index\.html$/, ''), 72, 585);
+        cv.toBlob(blob => {
+          if (!blob) return;
+          const file = new File([blob], 'ash-tree-lane.png', { type: 'image/png' });
+          if (navigator.canShare && navigator.canShare({ files: [file] })) navigator.share({ files: [file], text: 'Ash Tree Lane', url: location.href }).catch(() => {});
+          else { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'ash-tree-lane.png'; document.body.append(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000); }
+        }, 'image/png');
+      };
+      const last = stills[stills.length - 1];
+      if (last) { const im = new Image(); im.onload = () => { cx.globalAlpha = .75; cx.drawImage(im, 0, 0, 1200, 675); cx.globalAlpha = 1; draw(); }; im.onerror = draw; im.src = last.url; } else draw();
+    }
+    const HINTS = { introduction: 'a trunk in the foyer', ch1: 'a tape in the living room', ch2: 'the quarter of an inch, with the tape measure from the kitchen', ch3: 'a tape in the closet that was not there', explA: 'a camera at the end of the first corridor', karen: 'a photograph on a nightstand', samples: 'a specimen bag on the kitchen table', explorations: 'a map by the well', ch4: 'a page in the first room off the corridor', ch5: 'a cache in the corridor', ch6: 'markers on the stairs', tom: 'a recorder at the lip of the well', ch7: 'a camera a hundred steps down', rescue: 'a rig at the lip of the well', ch8: 'a radio by the door that should not be there', ch9: 'tapes in the bedroom', well: 'the well itself' };
     function finish() {
+      if (!game.ended) store.set('endings', store.get('endings', 0) + 1);
       game.ended = true;
       if (document.pointerLockElement) document.exitPointerLock();
       hud.veil.hidden = true; hud.prompt.hidden = true; hud.meter.textContent = '';
       Sound.ambience(false); Sound.weather(false); Sound.groan(false);
       const missed = ORDER.filter(id => HINTS[id] && !found.has(id));
       const still = missed.length ? `<p class="card-help">Still in the house: ${missed.map(id => HINTS[id]).join('; ')}.</p>` : '<p class="card-help">You found everything the house was willing to give up.</p>';
-      card(`<p class="card-kicker">Vermont</p><p>You burned every page. Someone came into the dark with a light, and you came out together.</p><p>What you carried out is in the journal. The letters, the exhibits and the index at the back are for whoever is still reading.</p>${still}<div class="card-actions"><button type="button" data-journal>Open the journal</button><button type="button" data-again>Walk the house again</button></div>`);
+      card(`<p class="card-kicker">Vermont</p><p>You burned every page. Someone came into the dark with a light, and you came out together.</p><p>What you carried out is in the journal. The letters, the exhibits and the index at the back are for whoever is still reading.</p>${still}<div class="card-actions"><button type="button" data-journal>Open the journal</button><button type="button" data-share>Make a card to share</button><button type="button" data-again>Walk the house again</button></div>`);
       $('[data-again]', hud.card)?.addEventListener('click', () => { store.set('again', true); location.reload(); });
+      $('[data-share]', hud.card)?.addEventListener('click', shareCard);
       $('button', hud.card)?.focus({ preventScroll: true });
     }
-    if (game.ended) setTimeout(finish, 600);
+    if (game.ended) { enterVermont(true); setTimeout(finish, 600); }
+    else if (found.has('ch10') && !found.has('ch11')) startKaren(true);
     // where you were: the house keeps its rooms and the corridor its line, so a place in either can be gone back to
     {
       const pos = store.get('pos', null);
@@ -1744,6 +2097,24 @@
       }
     }
     let posT = 3;
+    let hintT = 0, hintSig = '';
+    function nextHint() {
+      if (S.vermont) return 'The tapes are on the table.';
+      if (S.karen) return 'Keep walking. The corridor is shorter than it looks, and the light is at the end of it.';
+      if (!found.has('ch1')) return 'There is a tape on the moving boxes in the living room, by the lamp.';
+      if (!found.has('ch2')) return S.measuredIn ? 'The children’s window. Measure the same wall from the outside.' : measurePickups ? 'The pencil mark at the east end of the hall. Measure from there.' : 'The tape measure is on the kitchen counter.';
+      if (!found.has('ch3')) return 'The closet between the bedrooms. Something is on its floor.';
+      if (!found.has('explA')) return 'Follow the corridor to the room at its end. He set his camera down on the floor.';
+      if (S.fleeing && !S.torn) return 'Go back up. Walk off the top step, onto the floor of the Hall.';
+      if (!found.has('ch7')) return 'The corridor ends in a hall, and the stairs are in the middle of it. A camera is a hundred steps down.';
+      if (!found.has('rescue')) return 'Tom rigged a tripod at the lip of the well. It is still there.';
+      if (S.collapsePending) return 'Go home. Something is waiting in the living room.';
+      if (S.collapseT >= 0) return 'The front door. It opens outward now.';
+      if (!found.has('ch8')) return 'Tom’s radio is in the living room, by the door that should not be there.';
+      if (!found.has('ch9')) return 'Karen’s tapes are on the nightstand in the bedroom.';
+      if (!found.has('ch10')) return 'The hallway, all the way: past the room that closes, past the bicycle, on your hands and knees.';
+      return null;
+    }
 
     /* ---------- the look: what the lens does to the light ---------- */
 
@@ -1784,6 +2155,7 @@
     addEventListener('resize', resize); resize();
 
     function region() {
+      if (S.vermont) return 'vermont';
       if (P.x < G.x0 - .1) return 'house';
       if (stair.active) return 'stair';
       return P.x > G.x0 + G.hallStart * G.T - 1 ? 'hall' : 'maze';
@@ -1803,6 +2175,7 @@
         if (hit(0) && target) interact(target);
         if (hit(2)) jump();
         if (hit(3) || hit(9)) openJournal(jPage.dataset.id);
+        if (hit(5)) takeStill();
       } else if (!$('#dark').hidden && hit(0)) $('[data-act="primary"]', $('#dark'))?.click();
       pad.prev = gp.buttons.map(x => x.pressed);
     }
@@ -1834,7 +2207,7 @@
       if (keys.has('tl')) P.yaw += dt * 1.8; if (keys.has('tr')) P.yaw -= dt * 1.8; // turning from the keyboard
       if (keys.has('pu')) P.pitch = clamp(P.pitch + dt * 1.2, -1.35, 1.35); if (keys.has('pd')) P.pitch = clamp(P.pitch - dt * 1.2, -1.35, 1.35);
       mx += stick.dx; mz += stick.dz;
-      if (pad.on) { mx += pad.mx; mz += pad.mz; P.yaw -= pad.lx * dt * 2.4; P.pitch = clamp(P.pitch - pad.ly * dt * 1.8 * (store.get('invert', false) ? -1 : 1), -1.35, 1.35); }
+      if (pad.on) { mx += pad.mx; mz += pad.mz; P.yaw -= pad.lx * dt * 2.4 * SET.sens; P.pitch = clamp(P.pitch - pad.ly * dt * 1.8 * (store.get('invert', false) ? -1 : 1), -1.35, 1.35); }
       if (S.falling) mx = mz = 0;
       const mag = Math.hypot(mx, mz); if (mag > 1) { mx /= mag; mz /= mag; }
       let speed = keys.has('run') || pad.run ? 3.4 : 2.1;
@@ -1882,7 +2255,7 @@
         P.walked += Math.hypot(P.vx, P.vz) * dt;
         stair.deepest = Math.max(stair.deepest, depth);
         if (depth > 33 && depth < 60 && !found.has('ch7') && !S.saidCam) { S.saidCam = true; say('You passed a camera on its side, a few treads up. Its battery is dead. Its tape is not.', 8000); }
-        if (depth > 52 && !S.saidBottom) { S.saidBottom = true; say('There is nothing below that you need. Everything you came for is above you.', 8000); }
+        if (depth > 58 && !S.saidBottom) { S.saidBottom = true; say('There is nothing below that you need. Everything you came for is above you.', 8000); }
         while (stair.beat < STAIR_BEATS.length && depth >= STAIR_BEATS[stair.beat][0]) { const [, text, fx] = STAIR_BEATS[stair.beat++]; say(text); if (fx === 'growl') { Sound.growl(); shake = 1; torchDip = 1; } }
         if (depth > 20 && Math.random() < dt / 40) { Sound.growl(.6); shake = .6; torchDip = .7; }
         hud.meter.textContent = `Down: ${fmt(depth * FT)} ft. Steps: ${fmt(depth / RISE)}. ${Math.round(temperature())}°F.`;
@@ -1917,10 +2290,12 @@
 
       // footsteps
       const reg = region();
-      if (reg !== P.region) { Sound.room(reg === 'house' ? .06 : reg === 'maze' ? .38 : reg === 'hall' ? .55 : .45); P.region = reg; }
-      if (!stair.active && P.walked - P.stepAcc > .62) { P.stepAcc = P.walked; Sound.step(reg !== 'house', reg === 'maze' || reg === 'hall'); }
+      if (reg !== P.region) { Sound.room(reg === 'house' || reg === 'vermont' ? .06 : reg === 'maze' ? .38 : reg === 'hall' ? .01 : .45); P.region = reg; } // the Hall returns no echo
+      if (!stair.active && P.walked - P.stepAcc > .62) { P.stepAcc = P.walked; Sound.step(reg !== 'house' && reg !== 'vermont', reg === 'maze'); }
 
       // hallway beats by line paid out
+      if (G.phase === 'a' && reg === 'maze') S.gone += dt; // how long the camera says you were in there
+      if (reg === 'house' && S.gone > 20 && !S.clocked) { S.clocked = true; const watch = Math.max(Math.round(S.gone * 3.7 / 60), Math.round(S.gone / 60) + 30); hud.watch.textContent = `TOM’S WATCH ${tc(watch * 60 + (S.gone % 60))}`; hud.watch.hidden = false; setTimeout(() => { hud.watch.hidden = true; }, 12000); say(`The camera says you were in there ${tc(S.gone).slice(3)}. Tom’s watch says ${watch} minutes. Neither will change its mind.`, 9000); }
       if (reg === 'maze' || reg === 'hall') {
         P.lineOut = Math.max(P.lineOut, P.x - G.x0);
         const out = (P.x - G.x0) * FT;
@@ -1933,14 +2308,14 @@
         if (G.phase === 'empty') while (emptyBeat < EMPTY_BEATS.length && (P.x - G.x0) >= EMPTY_BEATS[emptyBeat][0]) say(EMPTY_BEATS[emptyBeat++][1], 6000);
         if (G.phase === 'a') explorationA();
         // the children, the first time: calling from much farther away than the yard goes
-        if (G.phase === 'a' && !S.kids && P.x - G.x0 > 5) { S.kids = 1; Sound.voice({ pitch: 300, dur: 1.4, far: .95, pan: -.2, level: .55 }); Sound.voice({ pitch: 270, dur: 1.1, far: 1, pan: .25, level: .5, at: 2.2 }); setTimeout(() => say('Daisy’s voice, from much farther off than the yard goes. Then Chad’s, farther.', 7000), 900); }
+        if (G.phase === 'a' && !S.kids && P.x - G.x0 > 5) { S.kids = 1; Sound.voice({ pitch: 300, dur: 1.4, far: .95, level: .9, pos: [P.x + 30, 1.2, P.z - 1] }); Sound.voice({ pitch: 270, dur: 1.1, far: 1, level: .85, at: 2.2, pos: [P.x + 45, 1.2, P.z + 1] }); setTimeout(() => say('Daisy’s voice, from much farther off than the yard goes. Then Chad’s, farther.', 7000), 900); }
         // Tom on the radio, while his lantern is lit
         if (reg === 'hall' && relayLantern && relayLantern.visible && !found.has('tom')) {
           const d = Math.hypot(P.x - relaySrc.pos.x, P.z - relaySrc.pos.z);
           S.radioT -= dt;
           if (S.radioT <= 0 && d < 34) {
             S.radioT = 14 + Math.random() * 10;
-            Sound.voice({ pitch: 128, dur: 2.5 + Math.random() * 2, radio: true, pan: panTo(relaySrc.pos.x, relaySrc.pos.z), level: .55 * clamp(1.3 - d / 30, .15, 1) });
+            Sound.voice({ pitch: 128, dur: 2.5 + Math.random() * 2, radio: true, level: .9, pos: [relaySrc.pos.x, .5, relaySrc.pos.z] });
             if (S.joke < TOM_JOKES.length && d < 16) setTimeout(() => say(TOM_JOKES[S.joke++], 7000), 700);
           }
         }
@@ -1950,16 +2325,34 @@
           const i = Math.floor((P.x - G.x0) / G.T), j = Math.floor((P.z - G.z0) / G.T), fz = -Math.cos(P.yaw);
           if (i >= G.loop[0] && i <= G.loop[1]) {
             if (j < 40 && fz < -.3) { P.z += 20 * G.T; S.loops++; shadowRef.force = true; if (S.loops === 3) say('This corridor is not getting any shorter.', 6000); if (S.loops === 6) say('You have walked this stretch before. More than once.', 6000); }
-            if (S.loops >= 2 && fz > .5 && !S.letGo) { S.letGo = true; say('You turn round. The way out is closer than it should be.', 6000); }
+            if (S.loops >= 2 && fz > .5 && !S.letGo) { S.letGo = true; stats.turned++; say('You turn round. The way out is closer than it should be.', 6000); }
           }
         }
+        // something breathing behind you: it stops the moment you turn round (twice in a whole visit at most)
+        if (!S.breath && S.breathN < 2 && (G.phase === 'long' || G.phase === 'short') && P.x - G.x0 > 25 && Math.random() < dt / 150) { S.breathN++; S.breath = { h: Sound.breathBehind(), yaw: P.yaw, t: 0 }; }
+        if (S.breath) { S.breath.t += dt; if (Math.abs(Math.atan2(Math.sin(P.yaw - S.breath.yaw), Math.cos(P.yaw - S.breath.yaw))) > 1.5 || S.breath.t > 9) { if (S.breath.h) S.breath.h.stop(); S.breath = null; } }
+        // a shape at the edge of the light, once in the whole game
+        if (!S.shape && !store.get('shape', false) && G.phase === 'long' && P.x - G.x0 > 55 && Math.random() < dt / 20) {
+          const side = Math.random() < .5 ? -1 : 1, ang = P.yaw + side * .42, dx = -Math.sin(ang), dz = -Math.cos(ang);
+          let ok = true; for (let d = .5; d < 8; d += .25) if (tileAt(Math.floor((P.x + dx * d - G.x0) / G.T), Math.floor((P.z + dz * d - G.z0) / G.T)) !== 0) { ok = false; break; }
+          if (ok) {
+            S.shape = true; store.set('shape', true);
+            const cv = document.createElement('canvas'); cv.width = 64; cv.height = 256; const cx = cv.getContext('2d');
+            const gr = cx.createRadialGradient(32, 110, 4, 32, 120, 120); gr.addColorStop(0, 'rgba(0,0,0,.95)'); gr.addColorStop(.55, 'rgba(0,0,0,.8)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
+            cx.fillStyle = gr; cx.beginPath(); cx.ellipse(32, 140, 22, 110, 0, 0, Math.PI * 2); cx.fill(); cx.beginPath(); cx.ellipse(32, 44, 26, 30, 0, 0, Math.PI * 2); cx.fill();
+            const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(cv), transparent: true, depthWrite: false, fog: true }));
+            sp.scale.set(.75, 3, 1); sp.position.set(P.x + dx * 8, 1.45, P.z + dz * 8); scene.add(sp);
+            S.shapeObj = { sp, t: 0 };
+          }
+        }
+        if (S.shapeObj) { const o = S.shapeObj; o.t += dt; const ax = o.sp.position.x - P.x, az = o.sp.position.z - P.z, rel = Math.atan2(Math.sin(Math.atan2(-ax, -az) - P.yaw), Math.cos(Math.atan2(-ax, -az) - P.yaw)); if (Math.abs(rel) < .14 || o.t > 1.3) { scene.remove(o.sp); o.sp.material.map.dispose(); S.shapeObj = null; Sound.play('creak_2', { gain: .15, rate: .7 }); } }
         // the room that gets smaller
         if (G.shrink && !S.shrunk && S.shrinkT < 0) { const i = (P.x - G.x0) / G.T, j = (P.z - G.z0) / G.T; if (i > 90 && i < 95 && j > 70 && j < 85) startShrink(); }
         if (G.ante && !S.saidAnte) { const i = (P.x - G.x0) / G.T; if (i > G.ante[0] && i < G.ante[1]) { S.saidAnte = true; say('A room with a doorway on every side. All of them go in. None of them go back.', 7000); } }
         if ((G.phase === 'long' || G.phase === 'short') && !stair.active) driftWalls(dt);
         if (S.torn && (P.x - G.x0) > 2 && Math.random() < dt / 30) { Sound.growl(.5); shake = .5; torchDip = .6; }
       } else if (reg === 'house') {
-        if (S.regrow && G.built) { buildMaze(S.regrow); placeMazePickups(); const txt = S.regrowText; S.regrow = S.regrowText = null; if (txt) setTimeout(() => say(txt, 7000), 800); }
+        if (S.regrow && G.built && !S.karen && !S.vermont) { buildMaze(S.regrow); placeMazePickups(); const txt = S.regrowText; S.regrow = S.regrowText = null; if (txt) setTimeout(() => say(txt, 7000), 800); }
         if (S.collapsePending && S.collapseT < 0 && !S.collapsed) startCollapse();
         hud.meter.textContent = S.collapseT >= 0 ? 'The house is closing.' : S.torn ? 'The house is not the size it was.' : '';
         if (S.torn && S.collapseT < 0 && Math.random() < dt / 25) { Sound.growl(.4); shake = .4; torchDip = .5; }
@@ -1967,13 +2360,21 @@
         if (S.doorAjar && P.z > 14 && !S.farOut && Math.hypot(P.x - 7, P.z - 6.5) > 24) { S.farOut = true; say('The house is behind you. So is everything in it.', 7000); }
       }
       if (S.collapseT >= 0) collapseStep(dt);
-      posT -= dt; if (posT <= 0) { posT = 3; if (!stair.active && !S.falling && S.collapseT < 0 && S.shrinkT < 0 && !Match.running && (reg === 'house' || reg === 'maze' || reg === 'hall')) store.set('pos', { x: +P.x.toFixed(2), z: +P.z.toFixed(2), yaw: +P.yaw.toFixed(2), phase: G.built ? G.phase : null, torn: S.torn, collapsed: S.collapsed }); }
+      if (tapeLine && tapeLine.visible) { const u = tapeLine.userData; u.t += dt; const k = Math.min(1, u.t / 1.2), len = .02 + 13.8 * k; tapeLine.scale.x = len; tapeLine.position.set(13.9 - len / 2, .95, 4.65); if (u.t > 6) tapeLine.visible = false; }
+      if (reg === 'maze' || reg === 'hall' || reg === 'stair') stats.dark += dt;
+      if (stair.active) stats.deep = Math.max(stats.deep, stair.depth() * FT);
+      stats.line = Math.max(stats.line, P.lineOut * FT);
+      const sig = found.size + G.phase + S.torn + S.collapsed + S.measuredIn + S.karen + S.vermont + S.fleeing + (measurePickups ? 1 : 0);
+      if (sig !== hintSig) { hintSig = sig; hintT = 0; } else if (!Match.running) { hintT += dt; if (hintT > 180) { hintT = 60; const h = nextHint(); if (h) say(h, 8000); } }
+      posT -= dt; if (posT <= 0) { posT = 3; saveStats(); if (!stair.active && !S.falling && S.collapseT < 0 && S.shrinkT < 0 && !Match.running && (reg === 'house' || reg === 'maze' || reg === 'hall')) store.set('pos', { x: +P.x.toFixed(2), z: +P.z.toFixed(2), yaw: +P.yaw.toFixed(2), phase: G.built ? G.phase : null, torn: S.torn, collapsed: S.collapsed }); }
       if (S.shrinkT >= 0 && shrinkParts) shrinkStep(dt);
       if (S.doorAjar && frontDoor.userData.swing < 1) { const sw = frontDoor.userData.swing = Math.min(1, frontDoor.userData.swing + dt * .7); frontDoor.rotation.y = -1.9 * sw * sw * (3 - 2 * sw); }
-      Sound.ambience(reg !== 'house' || S.torn, reg === 'house' ? .08 : reg === 'stair' ? .22 : reg === 'hall' ? .05 : .16); // the Hall is almost silent
-      Sound.weather(reg === 'house' && !S.torn);
+      Sound.ambience(reg !== 'vermont' && (reg !== 'house' || S.torn), reg === 'house' ? .08 : reg === 'stair' ? .22 : reg === 'hall' ? .05 : .16); // the Hall is almost silent
+      Sound.weather(reg === 'house' && !S.torn && !S.karen);
       Sound.groan(reg === 'house' && S.torn);
-      fogTarget = reg === 'house' ? (S.torn ? .1 : .045) : reg === 'maze' ? .085 : reg === 'hall' ? .05 : .075;
+      if (reg === 'vermont') { hud.meter.textContent = ''; const sp = vermont.snow.geometry.attributes.position; for (let i = 0; i < sp.count; i++) { let y = sp.getY(i) - dt * (.5 + (i % 7) * .05); if (y < 0) y += 4; sp.setY(i, y); sp.setX(i, sp.getX(i) + Math.sin(t * .7 + i) * dt * .05); } sp.needsUpdate = true; }
+      if (G.phase === 'karen' && reg === 'maze' && !S.karenDone) karenStep(dt);
+      fogTarget = reg === 'vermont' ? .012 : reg === 'house' ? (S.torn ? .1 : .045) : reg === 'maze' ? (G.phase === 'karen' ? .11 : .085) : reg === 'hall' ? .05 : .075;
       findTarget();
       render(dt);
     }
@@ -2000,7 +2401,7 @@
     let breathTimer = 3;
     const breathPos = new THREE.Vector3(), breathDir = new THREE.Vector3();
     function breathe(dt) {
-      const cold = P.region !== 'house' || S.torn;
+      const cold = P.region !== 'vermont' && (P.region !== 'house' || S.torn);
       breathTimer -= dt;
       if (cold && breathTimer <= 0 && !reduced) {
         breathTimer = clamp(3.2 - (32 - temperature()) * .08, 1.3, 3.2) + Math.random() * 1.6; // the colder, the more often
@@ -2019,12 +2420,14 @@
         if (b.age > 2.4) b.sp.visible = false;
       }
     }
-    let iris = 1;
+    let iris = 1, fpsT = 0;
     let bobPhase = 0;
     function render(dt) {
       scene.fog.density += (fogTarget - scene.fog.density) * (1 - Math.exp(-dt * 2));
       const reg = P.region;
-      scene.fog.color.setHex(reg === 'house' && !S.torn ? 0x0a0808 : 0x050506);
+      scene.fog.color.setHex(reg === 'vermont' ? 0xdfe5ec : reg === 'house' && !S.torn ? 0x0a0808 : 0x050506);
+      scene.background.setHex(reg === 'vermont' ? 0xdfe5ec : 0x020203);
+      dayHemi.intensity = reg === 'vermont' ? 1.7 : 0; daySun.intensity = reg === 'vermont' ? 2.3 : 0;
       skyDome.visible = reg === 'house';
       const moving = Math.hypot(P.vx, P.vz) > .3;
       bobPhase += dt * (moving ? 9 : 0);
@@ -2033,24 +2436,31 @@
       if (P.air > 0) { P.airV -= 9.8 * dt; P.air += P.airV * dt; if (P.air <= 0) { P.air = 0; P.airV = 0; if (!S.falling && !reduced) Sound.step(P.region !== 'house', P.region === 'maze' || P.region === 'hall'); } }
       if (S.falling) { P.fallV = Math.min(30, P.fallV + 9.8 * dt); camY -= P.fallV * dt; }
       camera.position.set(P.x, y + P.air, P.z);
-      const sway = reduced ? 0 : .0035 * (S.torn ? 2 : 1);
+      const sway = reduced ? 0 : .0035 * (S.torn ? 2 : 1) * (S.karen ? 1.8 : 1) * (SET.calm ? .3 : 1);
       camera.rotation.y = P.yaw + (Math.sin(t * .61) * .6 + Math.sin(t * 1.73) * .4) * sway;
       camera.rotation.x = P.pitch + (Math.sin(t * .83 + 1) * .6 + Math.sin(t * 2.1) * .4) * sway;
       camera.rotation.z = (reduced ? 0 : Math.sin(bobPhase * .5) * .004 * (moving ? 1 : 0)) + Math.sin(t * .47) * sway * .5;
-      if (shake > 0 && !reduced) { camera.position.x += (Math.random() - .5) * .02 * shake; camera.position.y += (Math.random() - .5) * .02 * shake; shake = Math.max(0, shake - dt * .6); }
-      const bright = (reg === 'house' && !S.torn ? .8 : 1) * (P.crawl ? .3 : 1); // in the crawlspace the walls are at your elbows
+      if (shake > 0 && !reduced && !SET.calm) { camera.position.x += (Math.random() - .5) * .02 * shake; camera.position.y += (Math.random() - .5) * .02 * shake; shake = Math.max(0, shake - dt * .6); }
+      const bright = (reg === 'house' && !S.torn ? .8 : 1) * (P.crawl ? .3 : 1) * (reg === 'vermont' ? 0 : S.karen ? .5 : 1); // in the crawlspace the walls are at your elbows; Karen's lamp is small; in Vermont it is day
+      torch.angle = S.karen ? .4 : .58;
       const irisTarget = clamp(viewDistance() / 4.5, .3, 1);
       iris += (irisTarget - iris) * (1 - Math.exp(-dt * 3));
       torchDip = Math.max(0, torchDip - dt * 1.4);
       const dipK = 1 - torchDip * (reduced ? .3 : .55 + Math.random() * .25);
       torch.intensity = 34 * bright * iris * dipK * (reduced ? 1 : 1 + Math.sin(t * 13) * .015 + (Math.random() - .5) * .03);
-      halo.intensity = reg === 'house' ? .7 : 2.2;
-      for (const l of lamps) if (l.flicker && l.src.intensity > 0) { const f = Math.random() < .04 ? .2 : 1; l.src.intensity = l.base * f * (S.torn ? .4 : 1); l.bulb.visible = f > .5; }
+      halo.intensity = reg === 'vermont' ? 0 : reg === 'house' ? .7 : 2.2;
+      for (const l of lamps) if (l.flicker && l.src.intensity > 0 && !SET.calm) { const f = Math.random() < .04 ? .2 : 1; l.src.intensity = l.base * f * (S.torn ? .4 : 1); l.bulb.visible = f > .5; }
       for (const led of leds) led.visible = Math.floor(t * 2) % 2 === 0;
       for (const p of pickups) { const m = p.children[0]; if (m && m.isMesh && !p.userData.door) { const near = Math.hypot(p.position.x - P.x, p.position.z - P.z) < 3.5; if (m.material.emissive) m.material.emissiveIntensity = near && p === target ? 3 : 1; } }
       motesTime.value = t; screenMat.uniforms.time.value = t; breathe(dt);
       look.uniforms.time.value = t; look.uniforms.grain.value = reduced ? .015 : (reg === 'house' ? .045 : .06); look.uniforms.breath.value = reduced ? 0 : shake;
-      look.uniforms.tear.value = reduced || !S.torn ? 0 : (reg === 'house' ? .8 : .35) * (.5 + .5 * Math.sin(t * .37));
+      look.uniforms.tear.value = reduced || !S.torn || reg === 'vermont' ? 0 : (reg === 'house' ? .8 : .35) * (.5 + .5 * Math.sin(t * .37));
+      look.uniforms.vignette.value = reg === 'vermont' ? .3 : S.karen ? .85 : .55;
+      if (reg === 'vermont') look.uniforms.grain.value = .02;
+      if (SET.calm) { look.uniforms.grain.value *= .35; look.uniforms.tear.value = 0; look.uniforms.breath.value = 0; }
+      look.uniforms.aberration.value = SET.calm ? 0 : .0035;
+      if (camera.fov !== SET.fov) { camera.fov = SET.fov; camera.updateProjectionMatrix(); }
+      if (SET.fps) { fpsT -= dt; if (fpsT <= 0) { fpsT = .5; hud.fps.textContent = `${Math.round(fps)} fps`; } }
       if (tvSrc.intensity > 0) tvSrc.intensity = 1.2 + Math.random() * .8;
       if (relayGlow && relayGlow.visible) { const k = 1.15 + Math.sin(t * 2.1) * .1 + Math.sin(t * 7.3) * .06; relayGlow.scale.set(k, k, 1); relaySrc.intensity = 2.4 + k; }
       poolLights();
@@ -2060,6 +2470,8 @@
       steps.visible = column.visible = shaft.visible = G.built && (reg === 'hall' || reg === 'stair');
       dust.material.opacity = reg === 'house' ? .45 : reg === 'hall' ? .38 : .3;
       composer.render(dt);
+      if (stillReq) grabStill();
+      Sound.listen(camera.position.x, camera.position.y, camera.position.z, P.yaw);
     }
     bakeStatics();
     requestAnimationFrame(frame);
@@ -2069,13 +2481,13 @@
       if (game.ended) return; // the end card is already up
       setTimeout(() => Sound.play('door_close', { gain: .8, rate: .9 }), 1400);
       setTimeout(() => {
-        card(`<p class="card-kicker">Ash Tree Lane</p><p>The house is empty. Whatever they left is still inside.</p><p class="card-help">${touch ? 'Drag on the left to walk, on the right to look. Tap what you find.' : 'Click to look around. Walk with WASD or ZQSD, turn with the arrow keys, Space to jump. Press E for what you find, J for the journal, I to invert the mouse. A gamepad works too.'}</p>`, 9000);
+        card(`<p class="card-kicker">Ash Tree Lane</p><p>${store.get('endings', 0) > 0 ? 'The house is empty. It was empty last time too. It is not quite the same house.' : 'The house is empty. Whatever they left is still inside.'}</p><p class="card-help">${touch ? 'Drag on the left to walk, on the right to look. Tap what you find.' : 'Click to look around. Walk with WASD or ZQSD, turn with the arrow keys, Space to jump. Press E for what you find, J for the journal, I to invert the mouse. A gamepad works too.'}</p>`, 9000);
       }, 400);
       if (found.size > 2 && !game.ended) setTimeout(() => say(S.resumed ? 'You are where you left off. The house remembers too.' : 'You have been here before. What you found is still in the journal.', 6000), S.resumed ? 3000 : 10000);
     }
 
     // for tests and the curious
-    window.ATL = { P, S, G, stair, stairTo, colliders, statics, baked, sources, pool, regrow: (phase, L) => { buildMaze(phase, L); placeMazePickups(); }, jump, air: () => P.air, temperature, startShrink, setTile, flushChunks, driftWalls, startCollapse, tileAt, camY: () => camY, paused: () => game.paused, near: () => pickups.filter(p => Math.hypot(p.position.x - P.x, p.position.z - P.z) < 3).map(p => p.userData.id + '@' + Math.hypot(p.position.x - P.x, p.position.z - P.z).toFixed(2)), yawTo: (dx, dz) => Math.atan2(-dx, -dz), models, fps: () => Math.round(fps), loaded: () => loadDone, teleport(x, z, yaw = P.yaw) { P.x = x; P.z = z; P.yaw = yaw; P.vx = P.vz = 0; }, look(yaw, pitch = 0) { P.yaw = yaw; P.pitch = pitch; }, target: () => target?.userData.id, interact: () => target && interact(target), found, unlock, keys, renderer, scene };
+    window.ATL = { P, S, G, stair, stairTo, colliders, statics, baked, sources, pool, regrow: (phase, L) => { buildMaze(phase, L); placeMazePickups(); }, startKaren, enterVermont, stats: () => stats, stills: () => stills.length, takeStill, jump, air: () => P.air, temperature, startShrink, setTile, flushChunks, driftWalls, startCollapse, tileAt, camY: () => camY, paused: () => game.paused, near: () => pickups.filter(p => Math.hypot(p.position.x - P.x, p.position.z - P.z) < 3).map(p => p.userData.id + '@' + Math.hypot(p.position.x - P.x, p.position.z - P.z).toFixed(2)), yawTo: (dx, dz) => Math.atan2(-dx, -dz), models, fps: () => Math.round(fps), loaded: () => loadDone, teleport(x, z, yaw = P.yaw) { P.x = x; P.z = z; P.yaw = yaw; P.vx = P.vz = 0; }, look(yaw, pitch = 0) { P.yaw = yaw; P.pitch = pitch; }, target: () => target?.userData.id, interact: () => target && interact(target), found, unlock, keys, renderer, scene };
   }
 
   /* ================================================================
@@ -2113,8 +2525,8 @@
       return pages;
     }
     const m = { pages: bookPages(), i: 0, light: .5, state: 'reading', clock: 0, fi: 0, fin: 0, white: 0, called: false, called2: false, swelled: false, rect: null, warned: false };
-    const FINALE = [[0, 'No more pages.'], [3.4, 'Nothing under you. Nothing above.'], [7.2, 'Nothing, for a long time.'], [11.6, 'Then, very far off, a light that is not yours.'], [16.4, 'It is coming toward you. It is not in a hurry.'], [20.6, 'Someone is saying your name. She has never been in here before. She came anyway.'], [25.4, 'Karen.'], [29, 'The house lets go.']];
-    const ARRIVE = 11.6, LETGO = 29, END = 34;
+    const FINALE = [[0, 'No more pages.'], [3.4, 'Nothing under you. Nothing above.'], [7.2, 'Nothing, for a long time.'], [10.8, 'Far above you, in the house, a door opens.']];
+    const ARRIVE = 99, LETGO = 99, END = 14.5; // the light that comes for him is Karen's, and you carry it
     function showPage(pg, n, total) {
       page.className = 'dark-page' + (pg.title ? ' title-page' : '');
       page.innerHTML = pg.html + (pg.title ? '' : `<p class="page-foot">${n}</p>`);

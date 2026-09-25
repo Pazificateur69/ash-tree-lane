@@ -52,11 +52,13 @@
     <p class="hud-sub" data-sub aria-live="polite"></p>
     <button class="hud-prompt" type="button" data-prompt hidden></button>
     <p class="hud-rec" aria-hidden="true"><span class="rec-dot"></span>REC <span data-rec>00:00:00</span></p>
+    <p class="hud-watch" data-watch aria-hidden="true" hidden></p>
     <div class="hud-stick" data-stick aria-hidden="true" hidden><i></i></div>
     <div class="hud-corner">
       <button class="hud-btn" type="button" data-quality>Detail: high</button>
       <button class="hud-btn" type="button" data-sound>Sound on</button>
       <button class="hud-btn" type="button" data-journal>Journal</button>
+      <button class="hud-btn" type="button" data-settings-btn aria-haspopup="dialog">Settings</button>
     </div>
   </div>
   <div class="loading" data-loading role="status">
@@ -66,6 +68,20 @@
   </div>
   <div class="veil" data-veil hidden><p>Click to go on</p></div>
   <div class="fall" data-fall aria-hidden="true"></div>
+  <div class="flash" data-flash aria-hidden="true"></div>
+  <p class="hud-fps" data-fps aria-hidden="true" hidden></p>
+  <div class="settings" data-settings role="dialog" aria-modal="true" aria-label="Settings" hidden>
+    <h2 class="settings-title">Settings</h2>
+    <label>Look sensitivity <input type="range" name="sens" min="0.3" max="2.5" step="0.1"></label>
+    <label>Field of view <input type="range" name="fov" min="55" max="95" step="1"></label>
+    <label>Volume <input type="range" name="vol" min="0" max="1" step="0.05"></label>
+    <label>Subtitles <select name="sub"><option value="s">Small</option><option value="m">Medium</option><option value="l">Large</option></select></label>
+    <label class="check"><input type="checkbox" name="calm"> Calm picture: less grain, no flicker, no tearing, little shake</label>
+    <label class="check"><input type="checkbox" name="invert"> Invert the mouse</label>
+    <label class="check"><input type="checkbox" name="fps"> Show the frame rate</label>
+    <p class="settings-keys">WASD or ZQSD walk · arrows turn · Space jumps · E takes · C takes a still · J journal · O settings · a gamepad works too</p>
+    <button type="button" class="hud-btn" data-settings-close>Back to the house</button>
+  </div>
   <div class="card" data-card role="status" hidden></div>
 </section>
 
@@ -481,6 +497,27 @@
   </aside>
 </section>
 
+<section class="chapter" id="explSix" data-title="XIX. Exploration #6">
+  <h2 class="ch-head"><span class="ch-num">XIX</span><span class="sr-only">. </span><span class="ch-title">Exploration #6</span></h2>
+  <p>Of the sixth exploration there is no film. The Record ends with the fifth, and Zampanò ends with the Record. What follows was not in the trunk. It is what the counter kept of the one who went in after all of them, and what the house did not take back.</p>
+  <dl class="measure six-stats" data-six>
+    <div><dt>Deepest point on the stairs</dt><dd data-six-deep>DNE</dd></div>
+    <div><dt>Line paid out, at the farthest</dt><dd data-six-line>DNE</dd></div>
+    <div><dt>Time in the dark</dt><dd data-six-dark>DNE</dd></div>
+    <div><dt>Quarters dropped into the well</dt><dd data-six-quarters>DNE</dd></div>
+    <div><dt>Times into the well yourself</dt><dd data-six-jumps>DNE</dd></div>
+    <div><dt>Times you turned round</dt><dd data-six-turned>DNE</dd></div>
+    <div><dt>Stills taken</dt><dd data-six-stills>DNE</dd></div>
+    <div><dt>Visits to Ash Tree Lane</dt><dd data-six-visits>1</dd></div>
+  </dl>
+  <p>Like the others, this exploration found nothing at the bottom, because like the others it did not reach one. Unlike the others, it came back with everything it went in with. Zampanò would have found that suspicious.</p>
+  <div class="six-johnny voice-johnny" data-six-johnny></div>
+  <figure class="six-film" data-six-film hidden>
+    <figcaption>The footage. What the camcorder kept, in the order it was kept.</figcaption>
+    <div class="six-strip" data-six-strip></div>
+  </figure>
+</section>
+
 <section class="appendix voice-pelafina" id="letters" data-title="Appendix I. The Whalestoe Letters">
   <header class="appendix-head">
     <p class="appendix-kicker">Appendix I</p>
@@ -626,6 +663,7 @@
     <div><dt>Wax (Kirby Hook)</dt><dd>8,720 px, 12,900 px, 19,860 px</dd></div>
     <div><dt>well</dt><dd>6,330 px, 19,700 px</dd></div>
     <div><dt>well, people who jumped into the</dt><dd data-jumped>DNE (so far)</dd></div>
+    <div><dt>door, that was not there last time</dt><dd data-visitdoor>DNE</dd></div>
     <div><dt>window</dt><dd>in the house, 2,010 px; in the hallway, DNE</dd></div>
     <div><dt>Zampanò</dt><dd>880 px; the rest is his</dd></div>
   </dl>
