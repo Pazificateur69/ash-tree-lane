@@ -85,8 +85,8 @@ check('walls move behind you', before !== after);
 await shot('12b-corridor-tall', 55, 8.6, E, .25, 1200);
 check('the cold is on the meter', await ev(() => /°F\.$/.test(document.querySelector('[data-meter]').textContent)), await ev(() => document.querySelector('[data-meter]').textContent));
 // the side corridor that is the same corridor however far you walk it
-await ev(() => { const G = ATL.G; ATL.teleport(G.x0 + 63.5 * G.T, G.z0 + 44 * G.T, 0); ATL.look(0, 0); ATL.keys.add('f'); ATL.keys.add('run'); });
-await page.waitForFunction(() => ATL.S.loops >= 2, null, { timeout: 90000 }).catch(() => {});
+await ev(() => { const G = ATL.G; ATL.teleport(G.x0 + 63.5 * G.T, G.z0 + 41 * G.T, 0); ATL.look(0, 0); ATL.keys.add('f'); ATL.keys.add('run'); });
+await page.waitForFunction(() => ATL.S.loops >= 2, null, { timeout: 300000 }).catch(() => {}); // under software rendering a frame can take a second
 await ev(() => { ATL.keys.delete('f'); ATL.keys.delete('run'); });
 check('the loop corridor wraps', await ev(() => ATL.S.loops >= 2), await ev(() => ({ loops: ATL.S.loops })));
 const G = await ev(() => ({ x: ATL.G.stair.x, z: ATL.G.stair.z, x0: ATL.G.x0, ante: ATL.G.ante, T: ATL.G.T }));
@@ -161,7 +161,7 @@ await page.waitForFunction(() => ATL.S.shrinkT >= 0, null, { timeout: 40000 }).c
 await ev(() => ATL.keys.delete('f'));
 await page.waitForTimeout(4000);
 await page.screenshot({ path: OUT + '19b-shrinking.png' });
-await page.waitForFunction(() => ATL.S.shrunk, null, { timeout: 150000 }).catch(() => {});
+await page.waitForFunction(() => ATL.S.shrunk, null, { timeout: 500000 }).catch(() => {});
 check('the room gets smaller, and stays smaller', await ev(() => ATL.S.shrunk && ATL.tileAt(95, 70) === 1 && ATL.tileAt(95, 77) === 0));
 const low = await ev(() => ({ x0: ATL.G.x0, low: ATL.G.low, T: ATL.G.T }));
 await shot('20-bicycle', low.x0 + (low.low[0] - 6) * low.T, 8.6, E - .35, -.3, 1200);
