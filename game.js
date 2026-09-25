@@ -456,6 +456,14 @@
         o.connect(g).connect(this.bus); o.start(at); o.stop(at + .8);
       }
     },
+    shot(pos) { // a rifle, far off in the dark: a crack, and the Hall carrying it round
+      if (!this.ctx) return;
+      const c = this.ctx, t = c.currentTime + .05, s = this.noise(), f = c.createBiquadFilter(), g = c.createGain();
+      f.type = 'lowpass'; f.frequency.setValueAtTime(2600, t); f.frequency.exponentialRampToValueAtTime(380, t + .5);
+      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(1.4, t + .003); g.gain.setTargetAtTime(0, t + .01, .09);
+      const p = pos ? this.at(pos[0], pos[1], pos[2], 6) : null;
+      s.connect(f).connect(g); (p ? g.connect(p) : g).connect(this.bus); s.start(t); s.stop(t + 1.2);
+    },
     coin() { // a quarter dropped down the well: it rings on a step, and again, fainter, and again, and never lands
       if (!this.ctx) return;
       const c = this.ctx; let at = c.currentTime + .25, gap = .35, level = .5;
@@ -615,7 +623,7 @@
   const hud = {
     sub: $('[data-sub]'), prompt: $('[data-prompt]'), meter: $('[data-meter]'), rec: $('[data-rec]'),
     journal: $('[data-journal]'), sound: $('[data-sound]'), quality: $('[data-quality]'), veil: $('[data-veil]'), card: $('[data-card]'),
-    loading: $('[data-loading]'), loadBar: $('[data-load-bar]'), loadText: $('[data-load-text]'), stick: $('[data-stick]'), settings: $('[data-settings]'), setBtn: $('[data-settings-btn]'), fps: $('[data-fps]'), fall: $('[data-fall]'), watch: $('[data-watch]'), flash: $('[data-flash]'), still: $('[data-still]')
+    johnny: $('[data-johnny]'), loading: $('[data-loading]'), loadBar: $('[data-load-bar]'), loadText: $('[data-load-text]'), stick: $('[data-stick]'), settings: $('[data-settings]'), setBtn: $('[data-settings-btn]'), fps: $('[data-fps]'), fall: $('[data-fall]'), watch: $('[data-watch]'), flash: $('[data-flash]'), still: $('[data-still]')
   };
   let subTimer = 0;
   // subtitles wait their turn: a line is on screen long enough to read before the next one replaces it
@@ -646,6 +654,12 @@
       return;
     }
     subQueue.length = 0; showSub(text, ms, style);
+  }
+  let johnnyT = 0;
+  function johnny(html, ms = 11000) { // Johnny Truant, in the margin of your screen, as he is in the margins of the book
+    hud.johnny.innerHTML = html; mark(hud.johnny); hud.johnny.hidden = false;
+    requestAnimationFrame(() => hud.johnny.classList.add('in'));
+    clearTimeout(johnnyT); johnnyT = setTimeout(() => { hud.johnny.classList.remove('in'); setTimeout(() => { hud.johnny.hidden = true; }, 1500); }, ms);
   }
   function card(html, ms) {
     hud.card.innerHTML = html;
@@ -714,7 +728,8 @@
         import('three/addons/loaders/GLTFLoader.js'),
         import('three/addons/loaders/RGBELoader.js'),
         import('three/addons/utils/BufferGeometryUtils.js'),
-        import('three/addons/libs/meshopt_decoder.module.js')
+        import('three/addons/libs/meshopt_decoder.module.js'),
+        import('three/addons/objects/Reflector.js')
       ]);
     } catch (e) {
       console.error(e);
@@ -727,8 +742,8 @@
     $('.threshold').hidden = true;
     $('#game').hidden = false;
     document.body.classList.add('in-house');
-    const [THREE, { EffectComposer }, { RenderPass }, { ShaderPass }, { UnrealBloomPass }, { OutputPass }, { GLTFLoader }, { RGBELoader }, { mergeGeometries }, { MeshoptDecoder }] = libs;
-    try { buildWorld({ THREE, EffectComposer, RenderPass, ShaderPass, UnrealBloomPass, OutputPass, GLTFLoader, RGBELoader, mergeGeometries, MeshoptDecoder }); }
+    const [THREE, { EffectComposer }, { RenderPass }, { ShaderPass }, { UnrealBloomPass }, { OutputPass }, { GLTFLoader }, { RGBELoader }, { mergeGeometries }, { MeshoptDecoder }, { Reflector }] = libs;
+    try { buildWorld({ THREE, EffectComposer, RenderPass, ShaderPass, UnrealBloomPass, OutputPass, GLTFLoader, RGBELoader, mergeGeometries, MeshoptDecoder, Reflector }); }
     catch (e) {
       console.error(e);
       $('#game').hidden = true; $('.threshold').hidden = false; document.body.classList.remove('in-house'); game.started = false;
@@ -770,7 +785,7 @@
     [28, 'If there is a bottom, it is not for you.']
   ];
 
-  function buildWorld({ THREE, EffectComposer, RenderPass, ShaderPass, UnrealBloomPass, OutputPass, GLTFLoader, RGBELoader, mergeGeometries, MeshoptDecoder }) {
+  function buildWorld({ THREE, EffectComposer, RenderPass, ShaderPass, UnrealBloomPass, OutputPass, GLTFLoader, RGBELoader, mergeGeometries, MeshoptDecoder, Reflector }) {
     const canvas = $('.game-canvas');
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
     let prCap = Q.low ? 1 : 1.25; // lowered automatically when frames come slowly
@@ -1151,6 +1166,8 @@
     model('microwave', { size: .6, axis: 'x', x: .5, y: .92, z: 9.7, ry: Math.PI / 2 });
     model('plant_small', { size: .5, x: .45, y: .92, z: 6.3, cast: false });
     solid(box(.75, 1.75, .7, M.white, 5.5, .875, 5.75), .75, .7); box(.02, .3, .02, M.metal, 5.14, 1.1, 5.55);      // the fridge and its handle
+    const fridgeArt = new THREE.Mesh(new THREE.PlaneGeometry(.3, .24), new THREE.MeshStandardMaterial({ roughness: 1 })); fridgeArt.position.set(5.5, 1.28, 6.106); fridgeArt.rotation.z = .05; scene.add(fridgeArt); // Daisy's drawing, held by a magnet
+    box(.03, .03, .012, M.yellow, 5.5, 1.39, 6.11);
     const kitchenTable = box(1.4, .05, .9, M.wood, 3.6, .74, 8.6, 1); for (const [dx, dz] of [[-.62, -.38], [.62, -.38], [-.62, .38], [.62, .38]]) box(.05, .72, .05, M.wood, 3.6 + dx, .36, 8.6 + dz); block(3.6, 8.6, 1.4, .9);
     for (const [x, z, ry] of [[2.7, 8.6, Math.PI / 2], [4.5, 8.6, -Math.PI / 2], [3.6, 9.5, 0]]) { // chairs
       const c = new THREE.Group(); c.position.set(x, 0, z); c.rotation.y = ry; scene.add(c);
@@ -1474,6 +1491,30 @@
     let mazePickups = [];
     let relayLantern = null, relayGlow = null, relayBlocks = [];
     const relaySrc = source(0, .5, 0, 0xffa858, 0, 9);
+    /* the markers you leave, and what the house does with them */
+    let markers = [];
+    const markerMat = new THREE.MeshBasicMaterial({ color: 0x9dff6a }), scrapMat = new THREE.MeshBasicMaterial({ color: 0x4a6a3a, side: THREE.DoubleSide });
+    function dropMarker() {
+      if (!G.built || (P.region !== 'maze' && P.region !== 'hall') || stair.active) { say('Save the markers for the hallway.', 2500); return; }
+      if (markers.length >= 8) { say('That was the last marker.', 3000); return; }
+      const g = new THREE.Group(); g.position.set(P.x - Math.sin(P.yaw) * .5, 0, P.z - Math.cos(P.yaw) * .5);
+      const stick = new THREE.Mesh(new THREE.CylinderGeometry(.012, .012, .16, 6), markerMat); stick.rotation.z = Math.PI / 2; stick.rotation.y = Math.random() * 3; stick.position.y = .012; g.add(stick);
+      const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: moteTex, color: 0x9dff6a, transparent: true, opacity: .8, blending: THREE.AdditiveBlending, depthWrite: false })); glow.scale.set(.45, .45, 1); glow.position.y = .05; g.add(glow);
+      scene.add(g); mazeDecor.push(g);
+      const src = source(g.position.x, .15, g.position.z, 0x9dff6a, .9, 3.5);
+      markers.push({ g, src, eaten: false, seen: false }); Sound.click();
+      if (markers.length === 1) say('A marker, glowing green, on the floor. So you can find your way back.', 4500);
+    }
+    function eatMarkers() { // out of sight and far enough away, the house takes them, the way it took Holloway's
+      for (const m of markers) {
+        const dx = m.g.position.x - P.x, dz = m.g.position.z - P.z, d = Math.hypot(dx, dz), ahead = (-Math.sin(P.yaw) * dx - Math.cos(P.yaw) * dz) / (d || 1);
+        if (!m.eaten && d > 16 && ahead < .2) {
+          m.eaten = true; m.src.intensity = 0; m.g.clear();
+          for (let k = 0; k < 7; k++) { const sc = new THREE.Mesh(new THREE.PlaneGeometry(.02 + Math.random() * .03, .01 + Math.random() * .02), scrapMat); sc.rotation.set(-Math.PI / 2, 0, Math.random() * 6); sc.position.set((Math.random() - .5) * .5, .004, (Math.random() - .5) * .5); m.g.add(sc); }
+        }
+        if (m.eaten && !m.seen && d < 3) { m.seen = true; if (!S.saidEaten) { S.saidEaten = true; say('Your marker. Shredded to green flakes, the way Holloway’s were. Nothing in here eats. Something did.', 7000); } }
+      }
+    }
     let mazeDecor = [], blueBoxTex = null;
     function blueBox() { // the book's blue-framed box, on a wall: a list of what the house does not have
       if (blueBoxTex) return blueBoxTex;
@@ -1488,7 +1529,9 @@
     function placeMazePickups() {
       for (const p of mazePickups) { scene.remove(p); dropPickup(p); }
       mazePickups = [];
-      for (const m of mazeDecor) scene.remove(m); mazeDecor = [];
+      for (const m of mazeDecor) if (!markers.some(k => k.g === m) || markers.phase !== G.phase) scene.remove(m);
+      mazeDecor = mazeDecor.filter(m => m.parent);
+      if (markers.phase !== G.phase) { for (const m of markers) m.src.intensity = 0; markers = []; markers.phase = G.phase; } // your markers outlast a corridor that grows, not a different one
       const gx = i => G.x0 + (i + .5) * G.T, gz = j => G.z0 + (j + .5) * G.T;
       if (G.phase === 'long') { // on the north wall of Holloway's corridor, some way in
         for (let i = 44; i < 110; i++) {
@@ -1603,6 +1646,7 @@
       if (e.code === 'Space') { jump(); e.preventDefault(); }
       if (e.code === 'KeyJ') { openJournal(jPage.dataset.id); e.preventDefault(); }
       if (e.code === 'KeyC') { takeStill(); e.preventDefault(); }
+      if (e.code === 'KeyM') { dropMarker(); e.preventDefault(); }
       if (e.code === 'KeyO') { openSettings(); e.preventDefault(); }
       if (e.code === 'KeyI') { const inv = !store.get('invert', false); store.set('invert', inv); say(inv ? 'Mouse inverted. I again to put it back.' : 'Mouse as it was.', 3000); e.preventDefault(); }
     });
@@ -1699,6 +1743,7 @@
       buildMaze(mazePhase()); placeMazePickups();
       for (let k = 0; k < 11; k++) { const f = k / 10, p = new THREE.Mesh(new THREE.CircleGeometry(.035, 8), M.pawprint); p.rotation.x = -Math.PI / 2; p.scale.y = 1.35; p.position.set(10.4 + f * 3.3 + (k % 2 ? .06 : -.06), .006, 9.6 - f * 1.05); scene.add(p); stat(p); } // prints, going in
       placeSteps(true); placeStairPickups(); bakeStatics();
+      if (!silent) drawFridge();
       if (!silent) { const home = f => () => { if (!S.karen && !S.vermont) f(); }; Sound.growl(.35); setTimeout(home(() => say('The living room has a new door. Behind it, the yard should be.')), 1200); setTimeout(home(() => say('The dog goes in first. Then the cat, as if it had been called.', 6500)), 9000); setTimeout(home(() => { Sound.knock(); say('Scratching at the back door. From the yard. The dog is outside, and nothing in there goes outside.', 8000); }), 26000); }
     }
     function tearHouse(silent) {
@@ -1721,7 +1766,7 @@
       const crack = new THREE.Mesh(new THREE.PlaneGeometry(.12, 6), M.black); crack.rotation.x = -Math.PI / 2; crack.rotation.z = .3; crack.position.set(4, .005, 8); scene.add(crack); stat(crack);
       placeTornPickups();
       bakeStatics();
-      if (!silent) setTimeout(() => say('The house has moved.'), 800);
+      if (!silent) { drawFridge(); setTimeout(() => say('The house has moved.'), 800); setTimeout(() => johnny('Four in the morning, reading this part, and something in my building made the sound. The growl. <s>I am not writing that for effect.</s> I am writing it so someone knows.'), 9000); }
     }
     const regrow = (phase, text) => { S.regrow = phase; S.regrowText = text || null; }; // the hallway is rebuilt the next time the house is between you and it
     AFTER_READ = {
@@ -1794,6 +1839,18 @@
     /* Vermont: daylight, snow, a small house the right size */
     const VX = -300, VZ = 0;
     let vermont = null;
+    var fridgeArts; // a declaration: a reopened house draws before this section runs
+    function drawFridge() { // the same house, drawn again as the house changes
+      fridgeArts ||= {}; const k = S.torn ? 'torn' : S.hallway ? 'hall' : 'house';
+      if (!fridgeArts[k]) fridgeArts[k] = crayon((line, cx) => {
+        line([[110, 290], [110, 170], [210, 95], [310, 170], [310, 290], [110, 290]], '#c43b2f'); line([[190, 290], [190, 230], [230, 230], [230, 290]], '#3b5bd6');
+        cx.fillStyle = '#e0a21a'; cx.beginPath(); cx.arc(430, 70, 32, 0, Math.PI * 2); cx.fill();
+        if (k !== 'house') { line([[310, 220], [505, 220]], '#222', 6); line([[310, 262], [505, 262]], '#222', 6); for (let x = 330; x < 500; x += 26) line([[x, 220], [x + 14, 262]], '#555', 3); } // a hallway out of the side of the house, off the page
+        if (k === 'torn') { for (let n = 0; n < 60; n++) line([[70 + Math.random() * 380, 60 + Math.random() * 250], [70 + Math.random() * 380, 60 + Math.random() * 250]], '#111', 5); cx.fillStyle = '#222'; cx.font = 'bold 36px Comic Sans MS, cursive'; cx.fillText('NO', 60, 360); }
+        else { cx.fillStyle = '#222'; cx.font = 'bold 28px Comic Sans MS, cursive'; cx.fillText(k === 'hall' ? 'DADDYS HALLWAY' : 'OUR HOUSE', 60, 360); }
+      });
+      fridgeArt.material.map = fridgeArts[k]; fridgeArt.material.needsUpdate = true;
+    }
     function crayon(draw) { // a child's drawing, in crayon
       const cv = document.createElement('canvas'); cv.width = 512; cv.height = 384; const cx = cv.getContext('2d');
       cx.fillStyle = '#f4f1e8'; cx.fillRect(0, 0, 512, 384); cx.lineCap = 'round'; cx.lineJoin = 'round';
@@ -1865,6 +1922,7 @@
     if (found.has('ch3')) openHallway(true);
     if (found.has('ch7')) tearHouse(true);
     if (found.has('rescue')) applyCollapsed();
+    drawFridge();
     if (found.has('ch9')) S.explore5 = true;
     for (const p of [...pickups]) if (p.userData.chapter && found.has(p.userData.chapter) && !p.userData.keep) { scene.remove(p); dropPickup(p); }
     if (found.has('ch11') && !store.get('again', false)) { game.ended = true; }
@@ -2251,7 +2309,7 @@
         const i = pi + (fx > 0 ? -1 : 1) * (14 + Math.floor(Math.random() * 20)), row = Math.random() < .5 ? 75 : 79, dir = row === 75 ? -1 : 1;
         if (i > 4 && i < Math.min(G.hallStart, G.W) - 4 && tileAt(i, row) === 1) { setTile(i, row, 0); for (let k = 1; k <= 3; k++) for (let di = -1; di <= 1; di++) setTile(i + di, row + dir * k, 0); changed = true; }
       }
-      if (changed) { flushChunks(); Sound.knock(); }
+      if (changed) { flushChunks(); Sound.knock(); Sound.growl(.3); shake = Math.max(shake, .4); torchDip = Math.max(torchDip, .3); } // what you hear is the house rearranging
     }
 
     /* Exploration #5: the dark with no dimensions */
@@ -2395,6 +2453,7 @@
         if (hit(2)) jump();
         if (hit(3) || hit(9)) openJournal(jPage.dataset.id);
         if (hit(5)) takeStill();
+        if (hit(4)) dropMarker();
       } else if (!$('#dark').hidden && hit(0)) $('[data-act="primary"]', $('#dark'))?.click();
       pad.prev = gp.buttons.map(x => x.pressed);
     }
@@ -2571,13 +2630,27 @@
         if (G.shrink && !S.shrunk && S.shrinkT < 0) { const i = (P.x - G.x0) / G.T, j = (P.z - G.z0) / G.T; if (i > 90 && i < 95 && j > 70 && j < 85) startShrink(); }
         if (G.ante && !S.saidAnte) { const i = (P.x - G.x0) / G.T; if (i > G.ante[0] && i < G.ante[1]) { S.saidAnte = true; say('A room with a doorway on every side. All of them go in. None of them go back.', 7000); } }
         if ((G.phase === 'long' || G.phase === 'short') && !stair.active) driftWalls(dt);
-        if (S.torn && (P.x - G.x0) > 2 && Math.random() < dt / 30) { Sound.growl(.5); shake = .5; torchDip = .6; }
+        if (markers.length) eatMarkers();
+        const deep = P.x - G.x0;
+        // the line, cut, on the way back
+        if (G.phase === 'long' && !S.lineCut && P.lineOut > 60 && deep < 45) { const sp = mazePickups.find(p => p.userData.id === 'spool'), ln = sp && sp.children[1]; if (ln) { S.lineCut = 24 + Math.random() * 8; ln.scale.x = S.lineCut / 60; ln.position.x = S.lineCut / 2; } }
+        if (S.lineCut && !S.saidCut && deep < S.lineCut + 1.5) { S.saidCut = true; say('The line ends here. Cut clean. Or bitten through.', 6500); }
+        // Holloway's rifle, somewhere out in the Hall
+        if (reg === 'hall' && G.phase === 'long' && (S.shots || 0) < 3 && Math.random() < dt / 45) { S.shots = (S.shots || 0) + 1; Sound.shot(Sound.around(Math.random() * 6.28, 45 + Math.random() * 20)); setTimeout(() => Sound.shot(Sound.around(Math.random() * 6.28, 70)), 1800 + Math.random() * 1500); if (S.shots === 1) setTimeout(() => say('A shot, far out in the Hall. Then another. Nobody down here has a rifle anymore.', 7000), 900); }
+        // Daisy, and the house saying it back
+        if (G.phase === 'long' && !S.daddy && deep > 30 && deep < 60) { S.daddy = true; for (let k = 0; k < 4; k++) Sound.voice({ pitch: 320 - k * 6, dur: .6, far: .9 + k * .03, level: .7 - k * .15, at: k * 1.9, pos: Sound.around(0, 20 + k * 18) }); setTimeout(() => say('“Daddy?” Daisy, from somewhere ahead. Then the same word again, and again, each time farther off, as if the house were saying it back.', 8000), 800); }
+        // Johnny, in the margin
+        if (G.phase === 'a' && !S.johnnyA && S.gone > 14) { S.johnnyA = true; johnny('I have started leaving the light on in the hall of my apartment. It doesn’t help. <s>It helps a little.</s>'); }
+        if (G.phase === 'empty' && !S.johnnyE && deep > 22) { S.johnnyE = true; johnny('There is something behind me. I know how that sounds. I am not going to turn around.', 9000); setTimeout(() => Sound.breathBehind(), 1200); }
+        if (S.torn && (P.x - G.x0) > 2 && Math.random() < dt / 30) driftT = 0; // the growl comes with a change, never alone
       } else if (reg === 'house') {
         if (S.regrow && G.built && !S.karen && !S.vermont) { buildMaze(S.regrow); placeMazePickups(); const txt = S.regrowText; S.regrow = S.regrowText = null; if (txt) setTimeout(() => say(txt, 7000), 800); }
         if (S.collapsePending && S.collapseT < 0 && !S.collapsed) startCollapse();
         hud.meter.textContent = S.collapseT >= 0 ? 'The house is closing.' : S.torn ? 'The house is not the size it was.' : '';
         if (S.torn && S.collapseT < 0 && Math.random() < dt / 25) { Sound.growl(.4); shake = .4; torchDip = .5; }
         if (!S.torn && Math.random() < dt / 90) Sound.knock();
+        // the new door: something rolls to it on its own
+        if (S.hallway && !S.torn && S.ballT === undefined && !S.ballDone && P.x > 7.5 && P.x < 12 && P.z > 7 && P.z < 12.5) { S.ballDone = true; S.ballT = 0; ball.visible = true; setTimeout(() => say('A ball rolls across the floor to the new door, and through it. Nobody pushed it.', 6500), 1200); }
         if (S.doorAjar && P.z > 14 && !S.farOut && Math.hypot(P.x - 7, P.z - 6.5) > 24) { S.farOut = true; say('The house is behind you. So is everything in it.', 7000); }
       }
       if (S.collapseT >= 0) collapseStep(dt);
@@ -2655,9 +2728,11 @@
     const otherOnTape = onTape(figure(2.05, new THREE.MeshBasicMaterial({ color: 0x050505 }))); otherOnTape.visible = false;
     const doorOnTape = onTape(new THREE.Mesh(new THREE.PlaneGeometry(1.12, 2.05), new THREE.MeshBasicMaterial({ color: 0x030303 }))); doorOnTape.position.set(13.905, 1.025, 8.5); doorOnTape.rotation.y = -Math.PI / 2;
     const mon = { cam: 1, t: 0, frame: 0, other: -1, yaw0: 0, look: 0, zoom: 0 };
+    const navOnTape = onTape(figure(1.8, new THREE.MeshStandardMaterial({ color: 0x3a3836, roughness: 1 }))); navOnTape.visible = false;
+    const feeds = () => found.has('explA') && G.built && (G.phase === 'long' || G.phase === 'short') ? [...cams, { x: G.x0 + .8, y: 1.55, z: 8.6, tx: G.x0 + 14, tz: 8.6, name: 'TAPE A   PLAYBACK', tape: true }] : cams;
     function monitorLabel() {
       const cx = labelCv.getContext('2d'); cx.clearRect(0, 0, 256, 192); cx.fillStyle = '#fff'; cx.font = 'bold 13px monospace';
-      cx.fillText(`CAM ${mon.cam + 1}  ${cams[mon.cam].name}`, 12, 22); cx.fillText('● REC', 196, 180); labelTex.needsUpdate = true;
+      const f = feeds()[mon.cam % feeds().length]; cx.fillText(f.tape ? f.name : `CAM ${mon.cam + 1}  ${f.name}`, 12, 22); cx.fillText('● REC', 196, 180); labelTex.needsUpdate = true;
     }
     function monitor(dt, reg) {
       const tvx = 10.5, tvz = 12.25, dx = tvx - P.x, dz = tvz - P.z, d = Math.hypot(dx, dz);
@@ -2669,7 +2744,7 @@
       mon.look = d < 3.4 && aim < .2 && Math.hypot(P.vx, P.vz) < .3 ? mon.look + dt : 0;
       mon.zoom = mon.look > .7 ? THREE.MathUtils.radToDeg(2 * Math.atan(.3 / Math.hypot(dx, dy, dz))) * 1.25 : 0;
       mon.t += dt;
-      if (mon.t > 7 && mon.other < 0) { mon.t = 0; mon.cam = (mon.cam + 1) % cams.length; if (!S.hallway && Math.random() < .5) mon.cam = Math.random() < .5 ? 1 : 4; monitorLabel(); }
+      if (mon.t > 7 && mon.other < 0) { mon.t = 0; mon.cam = (mon.cam + 1) % feeds().length; if (!S.hallway && Math.random() < .5) mon.cam = Math.random() < .5 ? 1 : 4; monitorLabel(); }
       // before the hallway: on the tape, the door is already there
       if (!S.hallway && watching && (mon.cam === 1 || mon.cam === 4) && !S.tapeDoor) { S.tapeDoor = true; say('On the monitor, the living room has a door in its east wall. In the room, it does not.', 7000); }
       // after the house has moved: once, the camera sees someone behind you
@@ -2682,11 +2757,37 @@
       }
       screenMat.uniforms.feedOn.value = mon.other >= 0 ? 1 : S.torn ? (Math.sin(t * 1.3) > .2 ? .55 + Math.random() * .25 : 0) : 1;
       if (++mon.frame % (mon.zoom ? 2 : Q.low ? 8 : 5) !== 0 || screenMat.uniforms.feedOn.value === 0) return;
-      const c = cams[mon.cam]; feedCam.position.set(c.x, 2.2, c.z); feedCam.lookAt(c.tx, .7, c.tz);
+      const c = feeds()[mon.cam % feeds().length]; feedCam.position.set(c.x, c.y || 2.2, c.z); feedCam.lookAt(c.tx, c.tape ? 1.3 : .7, c.tz);
+      navOnTape.visible = !!c.tape; if (c.tape) { navOnTape.position.set(G.x0 + 2.5 + mon.t * 1.9, 0, 8.6); navOnTape.rotation.y = -Math.PI / 2; if (watching && !S.sawTape) { S.sawTape = true; say('On the monitor, Navidson’s first tape. He walks in with the line paying out behind him. He does not look back.', 7000); } }
       meOnTape.position.set(P.x, 0, P.z); meOnTape.rotation.y = P.yaw; doorOnTape.visible = !S.hallway;
       const old = renderer.getRenderTarget(); renderer.setRenderTarget(feedRT); renderer.render(scene, feedCam); renderer.setRenderTarget(old);
     }
     monitorLabel();
+    // a ball, rolling to the new door on its own
+    const ball = new THREE.Mesh(new THREE.SphereGeometry(.09, 16, 12), new THREE.MeshStandardMaterial({ color: 0xc8321f, roughness: .6 })); ball.visible = false; scene.add(ball);
+    function rollBall(dt) {
+      if (S.ballT === undefined) return;
+      S.ballT += dt; const k = Math.min(1, S.ballT / 6.5), e = k * (2 - k);
+      const a = [8.2, 10.6], b = [16.5, 8.2]; ball.position.set(a[0] + (b[0] - a[0]) * e, .09, a[1] + (b[1] - a[1]) * e); ball.rotation.z -= dt * 6 * (1 - k); ball.rotation.x -= dt * 2 * (1 - k);
+      if (k >= 1) { ball.visible = false; S.ballT = undefined; }
+    }
+    // the mirror in their bedroom: you are in it, a little late
+    const mirror = new Reflector(new THREE.PlaneGeometry(.52, 1.08), { textureWidth: Q.low ? 256 : 512, textureHeight: Q.low ? 512 : 1024, color: 0x9a9a98, multisample: Q.low ? 0 : 4, clipBias: .003 });
+    mirror.position.set(6.405, 1.42, 3.25); mirror.rotation.y = -Math.PI / 2; scene.add(mirror); mirror.camera.layers.enable(2);
+    { const fr = new THREE.Mesh(new THREE.BoxGeometry(.03, 1.16, .6), M.wood); fr.position.set(6.43, 1.42, 3.25); scene.add(fr); stat(fr); }
+    const mirrorDraw = mirror.onBeforeRender; mirror.onBeforeRender = (r, sc, cam) => { if (cam === camera) mirrorDraw(r, sc, cam); };
+    const meInMirror = figure(1.75, new THREE.MeshStandardMaterial({ color: 0x1c1b1a, roughness: 1 }));
+    const lampInMirror = new THREE.Sprite(new THREE.SpriteMaterial({ map: moteTex, color: 0xfff2dc, transparent: true, opacity: .95, blending: THREE.AdditiveBlending, depthWrite: false })); lampInMirror.scale.set(.5, .5, 1); lampInMirror.position.set(.14, 1.48, -.3); meInMirror.add(lampInMirror);
+    meInMirror.traverse(o => o.layers.set(2)); scene.add(meInMirror);
+    const trail = [];
+    function mirrorStep(dt) {
+      const d = Math.hypot(P.x - 6.4, P.z - 3.25), on = P.region === 'house' && d < 7 && P.x < 6.5 && P.z < 4.2;
+      mirror.visible = on; if (!on) return;
+      trail.push([t, P.x, P.z, P.yaw]); while (trail.length > 2 && trail[1][0] < t - .38) trail.shift();
+      const [, x, z, yaw] = trail[0]; meInMirror.position.set(x, 0, z); meInMirror.rotation.y = yaw;
+      const dx = 6.4 - P.x, dz = 3.25 - P.z, ahead = (-Math.sin(P.yaw) * dx - Math.cos(P.yaw) * dz) / (d || 1);
+      if (!S.mirrorSaid && d < 3 && ahead > .85 && Math.hypot(P.vx, P.vz) > .4) { S.mirrorSaid = true; say('In the mirror you are a little late.', 5000); }
+    }
     function render(dt) {
       scene.fog.density += (fogTarget - scene.fog.density) * (1 - Math.exp(-dt * 2));
       const reg = P.region;
@@ -2734,7 +2835,7 @@
       if ((camMoved && (shadowRef.frame & 1) === 0) || shadowRef.frame < 4 || shadowRef.force) { renderer.shadowMap.needsUpdate = true; shadowRef.force = false; shadowRef.x = P.x; shadowRef.z = P.z; shadowRef.yaw = P.yaw; shadowRef.pitch = P.pitch; shadowRef.y = camY; }
       steps.visible = column.visible = shaft.visible = G.built && (reg === 'hall' || reg === 'stair');
       dust.material.opacity = reg === 'house' ? .45 : reg === 'hall' ? .38 : .3;
-      monitor(dt, reg);
+      monitor(dt, reg); rollBall(dt); mirrorStep(dt);
       composer.render(dt);
       if (stillReq) grabStill();
       Sound.listen(camera.position.x, camera.position.y, camera.position.z, P.yaw);
@@ -2753,7 +2854,7 @@
     }
 
     // for tests and the curious
-    window.ATL = { P, S, G, stair, stairTo, colliders, statics, baked, sources, pool, regrow: (phase, L) => { buildMaze(phase, L); placeMazePickups(); }, startKaren, enterVermont, hint: () => nextHint(), say, decor: () => mazeDecor.map(m => [+m.position.x.toFixed(2), +m.position.z.toFixed(2)]), stats: () => stats, stills: () => stills.length, takeStill, jump, air: () => P.air, temperature, startShrink, setTile, flushChunks, driftWalls, startCollapse, tileAt, camY: () => camY, paused: () => game.paused, near: () => pickups.filter(p => Math.hypot(p.position.x - P.x, p.position.z - P.z) < 3).map(p => p.userData.id + '@' + Math.hypot(p.position.x - P.x, p.position.z - P.z).toFixed(2)), yawTo: (dx, dz) => Math.atan2(-dx, -dz), models, fps: () => Math.round(fps), loaded: () => loadDone, teleport(x, z, yaw = P.yaw) { P.x = x; P.z = z; P.yaw = yaw; P.vx = P.vz = 0; }, look(yaw, pitch = 0) { P.yaw = yaw; P.pitch = pitch; }, target: () => target?.userData.id, interact: () => target && interact(target), found, unlock, keys, renderer, scene };
+    window.ATL = { P, S, G, stair, stairTo, colliders, statics, baked, sources, pool, regrow: (phase, L) => { buildMaze(phase, L); placeMazePickups(); }, startKaren, enterVermont, hint: () => nextHint(), say, dropMarker, markers: () => markers.map(m => m.eaten), johnny, decor: () => mazeDecor.map(m => [+m.position.x.toFixed(2), +m.position.z.toFixed(2)]), stats: () => stats, stills: () => stills.length, takeStill, jump, air: () => P.air, temperature, startShrink, setTile, flushChunks, driftWalls, startCollapse, tileAt, camY: () => camY, paused: () => game.paused, near: () => pickups.filter(p => Math.hypot(p.position.x - P.x, p.position.z - P.z) < 3).map(p => p.userData.id + '@' + Math.hypot(p.position.x - P.x, p.position.z - P.z).toFixed(2)), yawTo: (dx, dz) => Math.atan2(-dx, -dz), models, fps: () => Math.round(fps), loaded: () => loadDone, teleport(x, z, yaw = P.yaw) { P.x = x; P.z = z; P.yaw = yaw; P.vx = P.vz = 0; }, look(yaw, pitch = 0) { P.yaw = yaw; P.pitch = pitch; }, target: () => target?.userData.id, interact: () => target && interact(target), found, unlock, keys, renderer, scene };
   }
 
   /* ================================================================

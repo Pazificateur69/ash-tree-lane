@@ -816,6 +816,15 @@ main > .colophon {
 }
 .hud-sub.in { opacity: 1; }
 .hud-sub .house { color: #7d96ff; }
+.hud-johnny {
+  position: absolute; top: 14vh; left: max(5vw, 1rem); max-width: min(24rem, 80vw); margin: 0; padding: .8rem 1rem;
+  font-family: 'Courier Prime', Courier, monospace; font-size: clamp(.85rem, 1.6vw, 1rem); line-height: 1.45; color: #e2dccb;
+  background: rgba(24, 21, 16, .62); border-left: 2px solid rgba(226, 220, 203, .35); transform: rotate(-1.6deg);
+  opacity: 0; transition: opacity 1.4s ease; pointer-events: none; text-shadow: 0 1px 6px #000;
+}
+.hud-johnny.in { opacity: 1; }
+.hud-johnny s { opacity: .7; }
+.hud-johnny .house { color: #7d96ff; }
 .hud-sub[data-mode="sparse"] { word-spacing: 1.1em; letter-spacing: .05em; }
 .hud-sub[data-mode="sparse"] .w { display: inline-block; }
 .hud-sub[data-mode="column"] { width: 7.5rem; line-height: 1.25; font-size: clamp(.95rem, 1.9vw, 1.15rem); }
