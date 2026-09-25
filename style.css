@@ -816,6 +816,11 @@ main > .colophon {
 }
 .hud-sub.in { opacity: 1; }
 .hud-sub .house { color: #7d96ff; }
+.hud-sub[data-mode="sparse"] { word-spacing: 1.1em; letter-spacing: .05em; }
+.hud-sub[data-mode="sparse"] .w { display: inline-block; }
+.hud-sub[data-mode="column"] { width: 7.5rem; line-height: 1.25; font-size: clamp(.95rem, 1.9vw, 1.15rem); }
+.hud-sub[data-mode="column"] .w { display: block; margin: .15em 0; }
+.hud-sub[data-mode="mirror"] { transform: translateX(-50%) scaleX(-1); }
 .hud-prompt {
   position: absolute;
   left: 50%;
