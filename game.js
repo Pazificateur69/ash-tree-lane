@@ -932,7 +932,7 @@
     const gltf = new GLTFLoader(); gltf.setMeshoptDecoder(MeshoptDecoder); // the furniture arrives packed, a third lighter
     const models = { loaded: 0, wanted: 0 };
     function model(name, { size, axis = 'y', x = 0, y = 0, z = 0, ry = 0, cast = true, mirror = false, onLoad } = {}) {
-      const g = new THREE.Group(); g.position.set(x, y, z); g.rotation.y = ry; if (mirror) g.scale.z = -1; scene.add(g);
+      const g = new THREE.Group(); g.position.set(x, y, z); g.rotation.y = ry; if (mirror) g.scale.z = -1; g.userData.model = name; scene.add(g);
       models.wanted++;
       gltf.load(`assets/models/${name}.glb`, r => {
         const s = r.scene;
@@ -1073,6 +1073,25 @@
       side: THREE.BackSide, depthWrite: false
     }));
     skyDome.position.set(7, 0, 6.5); skyDome.renderOrder = 10; scene.add(skyDome);
+    // the hallway is built in the yard, east of the house. Seen from outside, from any window, it must not be there: a shell around it that shows
+    // the night beyond, a far tree line and the sky, as if the yard went on, open only at the hallway's own door. From inside the hallway you see through the shell.
+    const beyond = new THREE.ShaderMaterial({
+      uniforms: skyDome.material.uniforms,
+      vertexShader: 'varying vec3 vDir; void main(){ vec4 wp = modelMatrix * vec4(position, 1.0); vDir = wp.xyz - cameraPosition; gl_Position = projectionMatrix * viewMatrix * wp; }',
+      fragmentShader: skyDome.material.fragmentShader.replace(/gl_FragColor\s*=\s*vec4\(([^;]*)\);/, (m, c) => `vec4 skyC = vec4(${c}); vec3 dd = normalize(vDir); float az = atan(dd.z, dd.x); float tl = 0.17 + 0.045 * sin(az * 9.0) + 0.03 * sin(az * 23.0 + 1.3) + 0.018 * sin(az * 57.0 + 0.4) + 0.008 * sin(az * 190.0); float below = 1.0 - smoothstep(tl - 0.004, tl + 0.004, dd.y); gl_FragColor = vec4(mix(skyC.rgb, vec3(0.004, 0.005, 0.006), below), 1.0);`),
+      side: THREE.FrontSide
+    });
+    {
+      const X0 = G.x0 + .09, X1 = G.x0 + G.W * G.T + .5, Z0 = G.z0 - .5, Z1 = G.z0 + G.D * G.T + .5, TOP = 90, Y0 = -.06, dz0 = 7.92, dz1 = 9.08, dy = 2.05;
+      const quad = (w, h, x, y, z, ry, rx = 0) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), beyond); m.position.set(x, y, z); m.rotation.set(rx, ry, 0, 'YXZ'); m.frustumCulled = false; scene.add(m); return m; };
+      quad(dz0 - Z0, TOP - Y0, X0, (TOP + Y0) / 2, (Z0 + dz0) / 2, -Math.PI / 2); // the west face, around the door
+      quad(Z1 - dz1, TOP - Y0, X0, (TOP + Y0) / 2, (dz1 + Z1) / 2, -Math.PI / 2);
+      quad(dz1 - dz0, TOP - dy, X0, (TOP + dy) / 2, (dz0 + dz1) / 2, -Math.PI / 2);
+      quad(X1 - X0, TOP - Y0, (X0 + X1) / 2, (TOP + Y0) / 2, Z0, Math.PI); // north
+      quad(X1 - X0, TOP - Y0, (X0 + X1) / 2, (TOP + Y0) / 2, Z1, 0); // south
+      quad(Z1 - Z0, TOP - Y0, X1, (TOP + Y0) / 2, (Z0 + Z1) / 2, Math.PI / 2); // east
+      quad(X1 - X0, Z1 - Z0, (X0 + X1) / 2, TOP, (Z0 + Z1) / 2, 0, -Math.PI / 2); // above
+    }
 
     // pale rectangles where the photographs hung
     for (const [x, y, z, w, h, ry] of [[10, 1.65, .09, .5, .4, 0], [13.91, 1.6, 7, .6, .45, -Math.PI / 2], [6.09, 1.7, 8.5, .42, .55, Math.PI / 2], [.09, 1.6, 3, .35, .45, Math.PI / 2], [3, 1.65, 5.21, .5, .38, Math.PI], [9, 1.6, 4.09, .45, .35, 0]]) {
@@ -1134,24 +1153,26 @@
     model('teacup', { size: .15, axis: 'x', x: 4.0, y: .765, z: 8.35, ry: .6 });
 
     // bedroom (west) and the children's room (east)
-    model('bed', { size: 2.07, axis: 'max', x: 2.4, z: 1.2, ry: Math.PI / 2 }); block(2.4, 1.2, 1.62, 2.07);
-    model('blanket', { size: .5, axis: 'x', x: 2.62, y: .55, z: 1.9, ry: .4 });
-    model('nightstand', { size: .6, axis: 'x', x: 1.3, z: .4 }); block(1.3, .4, .6, .32);
-    model('nightstand', { size: .6, axis: 'x', x: 3.5, z: .4 }); block(3.5, .4, .6, .32);
-    model('picture', { size: .19, x: 3.5, y: .34, z: .38, ry: .3 });
-    model('bedside_lamp', { size: .24, x: 1.3, y: .34, z: .36, onLoad: sc => sc.traverse(o => { if (o.isMesh && /emitter/i.test(o.name)) { o.material = o.material.clone(); o.material.emissive = new THREE.Color(0xffe2b8); o.material.emissiveIntensity = 1.6; } }) });
-    const bedsideSrc = source(1.3, .58, .36, 0xffd6a0, 1.1, 3.2);
+    // their bed: the headboard against the north wall, beside the window, a nightstand either side
+    model('bed', { size: 2.07, axis: 'max', x: 4.95, z: 1.13, ry: 0 }); block(4.95, 1.13, 1.62, 2.07);
+    model('blanket', { size: .5, axis: 'x', x: 5.1, y: .55, z: 1.75, ry: 1.9 });
+    model('nightstand', { size: .6, axis: 'x', x: 3.8, z: .4 }); block(3.8, .4, .6, .32);
+    model('nightstand', { size: .6, axis: 'x', x: 6.07, z: .4 }); block(6.07, .4, .6, .32);
+    model('picture', { size: .19, x: 3.66, y: .34, z: .38, ry: .3 });
+    model('bedside_lamp', { size: .24, x: 6.12, y: .34, z: .36, onLoad: sc => sc.traverse(o => { if (o.isMesh && /emitter/i.test(o.name)) { o.material = o.material.clone(); o.material.emissive = new THREE.Color(0xffe2b8); o.material.emissiveIntensity = 1.6; } }) });
+    const bedsideSrc = source(6.12, .58, .36, 0xffd6a0, 1.1, 3.2);
     model('curtain', { size: 2.3, x: 2.05, z: .34, cast: false });
     model('curtain', { size: 2.3, x: .34, z: 1.2, ry: Math.PI / 2, cast: false });
-    model('chair_damask_purplegold', { size: .7, x: 5.6, z: 1, ry: -.9 }); block(5.6, 1, .7, .7);
-    model('bed', { size: 1.8, axis: 'max', x: 12.4, z: 1.05, ry: Math.PI / 2 }); block(12.4, 1.05, 1.4, 1.8);
-    model('bed', { size: 1.8, axis: 'max', x: 9.6, z: 1.05, ry: Math.PI / 2 }); block(9.6, 1.05, 1.4, 1.8);
+    model('chair_damask_purplegold', { size: .7, x: .9, z: 3.1, ry: -2.2 }); block(.9, 3.1, .7, .7); // in the corner by the west window, turned to the room
+    // the children's beds, side by side, heads to the north wall, the nightstand between them under the window
+    model('bed', { size: 1.8, axis: 'max', x: 12.45, z: .99, ry: 0 }); block(12.45, .99, 1.4, 1.8);
+    model('bed', { size: 1.8, axis: 'max', x: 9.55, z: .99, ry: 0 }); block(9.55, .99, 1.4, 1.8);
     model('nightstand', { size: .55, axis: 'x', x: 11, z: .38 }); block(11, .38, .55, .3);
     model('bedside_lamp', { size: .22, x: 11, y: .31, z: .34 });
-    model('boxes', { size: .73, axis: 'z', x: 8.3, z: 3.2, ry: .2 }); block(8.3, 3.2, .5, .75);
-    model('book', { size: .21, axis: 'x', x: 9.9, y: .01, z: 1.6, ry: .7, cast: false });
-    model('toy_car', { size: .17, axis: 'z', x: 9.9, z: 2.3, ry: 1.9 });
-    for (let k = 0; k < 4; k++) { const b = box(.16, .16, .16, k % 2 ? M.yellow : M.plastic, 8.3 + hash(k) * .5, .08, 2.6 + hash(k + 4) * .5); b.rotation.y = hash(k + 8) * 2; }
+    model('boxes', { size: .73, axis: 'z', x: 13.45, z: 3.4, ry: -.2 }); block(13.45, 3.4, .5, .75);
+    model('book', { size: .21, axis: 'x', x: 11.1, y: .01, z: 2.2, ry: .7, cast: false });
+    model('toy_car', { size: .17, axis: 'z', x: 10.1, z: 2.75, ry: 1.9 });
+    for (let k = 0; k < 4; k++) { const b = box(.16, .16, .16, k % 2 ? M.yellow : M.plastic, 8.2 + hash(k) * .6, .08, 2.7 + hash(k + 4) * .6); b.rotation.y = hash(k + 8) * 2; }
 
     // foyer
     solid(box(.9, .75, .4, M.wood, 4.5, .375, 12.6, 1), .9, .4);
@@ -1171,8 +1192,9 @@
     const lampAt = (x, y, z, i, shade = true) => {
       const src = source(x, y, z, 0xffc98a, i, 7.5);
       const b = new THREE.Mesh(new THREE.SphereGeometry(.05, 8, 6), M.bulb); b.position.copy(src.pos); scene.add(b);
-      if (shade) { const s = new THREE.Mesh(new THREE.CylinderGeometry(.16, .22, .18, 14, 1, true), M.shade); s.position.set(x, y + .04, z); scene.add(s); stat(s); const stem = new THREE.Mesh(new THREE.CylinderGeometry(.01, .01, H - y - .1, 6), M.brass); stem.position.set(x, (H + y) / 2, z); scene.add(stem); stat(stem); }
-      lamps.push({ src, bulb: b, base: i, flicker: hash(x * 3 + z) < .35 });
+      const parts = [b];
+      if (shade) { const s = new THREE.Mesh(new THREE.CylinderGeometry(.16, .22, .18, 14, 1, true), M.shade); s.position.set(x, y + .04, z); scene.add(s); stat(s); const stem = new THREE.Mesh(new THREE.CylinderGeometry(.01, .01, H - y - .1, 6), M.brass); stem.position.set(x, (H + y) / 2, z); scene.add(stem); stat(stem); parts.push(s, stem); }
+      lamps.push({ src, bulb: b, base: i, flicker: hash(x * 3 + z) < .35, hung: shade, parts: parts.map(o => [o, o.position.y]), y0: src.pos.y });
       return src;
     };
     lampAt(10, H - .35, 9, 7); lampAt(3, H - .35, 7.5, 6); lampAt(7, H - .3, 4.65, 4); lampAt(3, H - .35, 2, 4.5); lampAt(11, H - .35, 2, 4.5); lampAt(3, H - .35, 11.8, 4.5);
@@ -1397,7 +1419,7 @@
     pickup('tape1', 7.4, 1.16, 12.2, tapeBuild(M.labelTape1), { label: 'A Hi8 tape. In marker: ASH TREE LANE, 1.', chapter: 'ch1' });
     pickup('tape_measure', 1.1, .94, 8.6, g => { add(g, mesh(new THREE.BoxGeometry(.075, .07, .035), M.yellow), 0, .035, 0); add(g, mesh(new THREE.BoxGeometry(.4, .002, .016), M.paper), .25, .01, 0); add(g, mesh(new THREE.BoxGeometry(.012, .02, .02), M.metal), .45, .01, 0); }, { label: 'A tape measure, left open on the counter.', tool: 'tape', reach: 2 });
     pickup('tape2', 7, .02, 2.6, tapeBuild(M.labelTape2), { label: 'A Hi8 tape. In marker: 5½.', chapter: 'ch3' });
-    pickup('photo', 3.7, .345, .49, g => { const p = add(g, mesh(new THREE.PlaneGeometry(.1, .05), M.tagPhoto), 0, .003, 0); p.rotation.x = -Math.PI / 2; p.rotation.z = -.4; p.material.side = THREE.DoubleSide; add(g, mesh(new THREE.BoxGeometry(.11, .002, .13), M.white), 0, .001, 0).rotation.y = -.4; }, { label: 'A photograph, face down. On the back, in pencil: K., 1989.', chapter: 'karen' });
+    pickup('photo', 3.95, .345, .47, g => { const p = add(g, mesh(new THREE.PlaneGeometry(.1, .05), M.tagPhoto), 0, .003, 0); p.rotation.x = -Math.PI / 2; p.rotation.z = -.4; p.material.side = THREE.DoubleSide; add(g, mesh(new THREE.BoxGeometry(.11, .002, .13), M.white), 0, .001, 0).rotation.y = -.4; }, { label: 'A photograph, face down. On the back, in pencil: K., 1989.', chapter: 'karen' });
     pickup('samples', 3.9, .77, 8.75, g => { const bag = add(g, mesh(new THREE.BoxGeometry(.14, .05, .1), new THREE.MeshStandardMaterial({ color: 0xcfd2d6, roughness: .3, transparent: true, opacity: .75 })), 0, .025, 0); bag.rotation.y = .3; add(g, mesh(new THREE.BoxGeometry(.11, .025, .08), M.ash), 0, .02, 0).rotation.y = .3; const tag = add(g, mesh(new THREE.PlaneGeometry(.09, .045), M.tagSample), .06, .004, .07); tag.rotation.x = -Math.PI / 2; tag.rotation.z = .9; tag.material.side = THREE.DoubleSide; }, { label: 'A specimen bag of gray dust, tagged in Reston’s hand.', chapter: 'samples' });
     const frontDoor = pickup('front_door', 2.5, 1, 12.92, g => { add(g, mesh(boxUV(new THREE.BoxGeometry(1, 2.05, .06), 1, 2.05, .06, 1), M.wood), 0, 0, 0); for (const y of [.55, -.15, -.75]) add(g, mesh(new THREE.BoxGeometry(.7, .45, .012), M.wood), 0, y, .035); add(g, mesh(new THREE.SphereGeometry(.03, 10, 8), M.brass), .38, -.05, .05); add(g, mesh(new THREE.BoxGeometry(.06, .11, .01), M.brass), .38, -.2, .035); }, { label: 'The front door.', door: 'front', reach: 1.8 });
     block(2.5, 12.95, 1, .2);
@@ -1525,7 +1547,7 @@
       if (tornPickups) return; tornPickups = true;
       const put = p => { if (found.has(p.userData.chapter)) { scene.remove(p); dropPickup(p); } };
       put(pickup('radio', 12.6, 0, 8.4, g => { const r = model('radio', { size: .23 }); scene.remove(r); r.position.set(0, 0, 0); r.rotation.y = -.6; g.add(r); add(g, mesh(new THREE.BoxGeometry(.012, .012, .012), M.led), .06, .12, .11); }, { label: 'Tom’s radio. It is still on.', chapter: 'ch8', reach: 2.4 }));
-      put(pickup('karen_tapes', 1.1, .345, .46, g => { for (let k = 0; k < 3; k++) add(g, mesh(new THREE.BoxGeometry(.19, .025, .1), M.tape), 0, .0125 + k * .027, 0).rotation.y = (k - 1) * .15; add(g, mesh(new THREE.PlaneGeometry(.13, .05), M.labelKaren), 0, .082, 0).rotation.set(-Math.PI / 2, 0, .3); }, { label: 'VHS tapes, labeled in Karen’s hand: WHAT SOME HAVE THOUGHT.', chapter: 'ch9' }));
+      put(pickup('karen_tapes', 5.92, .345, .46, g => { for (let k = 0; k < 3; k++) add(g, mesh(new THREE.BoxGeometry(.19, .025, .1), M.tape), 0, .0125 + k * .027, 0).rotation.y = (k - 1) * .15; add(g, mesh(new THREE.PlaneGeometry(.13, .05), M.labelKaren), 0, .082, 0).rotation.set(-Math.PI / 2, 0, .3); }, { label: 'VHS tapes, labeled in Karen’s hand: WHAT SOME HAVE THOUGHT.', chapter: 'ch9' }));
       // the rigging Tom built at the top of the stairs, for the wounded
       put(pickup('rig', G.stair.x + 3.7, 0, G.stair.z, g => {
         for (let k = 0; k < 3; k++) { const a = k * Math.PI * 2 / 3; const leg = add(g, mesh(new THREE.CylinderGeometry(.03, .035, 2.2, 8), M.wood), Math.cos(a) * .5, 1.05, Math.sin(a) * .5); leg.rotation.set(Math.sin(a) * .42, 0, -Math.cos(a) * .42); }
@@ -1654,11 +1676,10 @@
       const rand = rng(41);
       for (const w of houseWalls) {
         if (w.tag === 'plug' || w.tag === 'lintel' || w.tag === 'sill') continue;
-        const roll = rand();
-        if (['hall', 'kitchen-living'].includes(w.tag) && roll < .5) { statics.delete(w.mesh); w.mesh.removeFromParent(); const k = colliders.indexOf(w.col); if (k >= 0) colliders.splice(k, 1); }
-        else if (roll < .75) { w.mesh.rotation.z = (rand() - .5) * .16; w.mesh.rotation.x = (rand() - .5) * .1; }
+        if (['hall', 'kitchen-living'].includes(w.tag) && rand() < .5) { statics.delete(w.mesh); w.mesh.removeFromParent(); const k = colliders.indexOf(w.col); if (k >= 0) colliders.splice(k, 1); }
       }
-      houseCeiling.material = M.ashFloor; houseCeiling.position.y = H + .6; houseCeiling.rotation.z = .04;
+      lean().tear();
+      houseCeiling.material = M.ashFloor; houseCeiling.position.y = H + .6; houseCeiling.rotation.z = .04; lean().ceiling();
       for (const l of lamps) { l.src.intensity = 0; l.bulb.visible = false; }
       bedsideSrc.intensity = 0;
       const pane = glassPanes.reduce((a, b) => { const pa = new THREE.Vector3(), pb = new THREE.Vector3(); a.getWorldPosition(pa); b.getWorldPosition(pb); return pb.distanceTo(new THREE.Vector3(13.9, 1.55, 11.1)) < pa.distanceTo(new THREE.Vector3(13.9, 1.55, 11.1)) ? b : a; });
@@ -1864,16 +1885,171 @@
     }
 
     /* the house closes: after the rescue, the rooms the family lives in come apart around them */
-    function leanMore(w, rand) { return [(rand() - .5) * .22, (rand() - .5) * .3 * (w.tag === 'plug' || w.tag === 'sill' || w.tag === 'lintel' ? .5 : 1)]; } // a declaration: a reopened house leans before this section runs
+    /* the house closing: each wall is one line that leans and steps in as a whole; what hangs on it goes with it, and what stands against it is shoved */
+    var leanNow; // declarations: a reopened house leans before this section runs
+    function lean() { return leanNow || (leanNow = makeLean()); }
+    function makeLean() {
+      const state = new Map(); // line key: { t, a } where t is a step across the line and a a lean, both toward +z or +x
+      const q = new THREE.Quaternion(), v = new THREE.Vector3(), X = new THREE.Vector3(1, 0, 0), Z = new THREE.Vector3(0, 0, 1);
+      const key = (alongX, c) => (alongX ? 'x' : 'z') + c.toFixed(2);
+      function lines() {
+        const out = new Map();
+        for (const w of houseWalls) {
+          if (!w.mesh.parent) continue;
+          const alongX = w.alongX, base = w.mesh.userData.base, c = base ? (alongX ? base.p.z : base.p.x) : (alongX ? w.mesh.position.z : w.mesh.position.x), k = key(alongX, c);
+          let L = out.get(k); if (!L) out.set(k, L = { k, alongX, c, a0: Infinity, a1: -Infinity, walls: [], hangs: [] });
+          const m = base ? (alongX ? base.p.x : base.p.z) : (alongX ? w.mesh.position.x : w.mesh.position.z);
+          L.a0 = Math.min(L.a0, m - w.len / 2); L.a1 = Math.max(L.a1, m + w.len / 2); L.walls.push(w);
+        }
+        for (const L of out.values()) { L.ext = L.alongX ? (L.c < .1 || L.c > 12.9) : (L.c < .1 || L.c > 13.9); L.s = state.get(L.k) || { t: 0, a: 0 }; state.set(L.k, L.s); }
+        return [...out.values()];
+      }
+      const baseOf = o => o.userData.base || (o.userData.base = { p: o.position.clone(), q: o.quaternion.clone() });
+      function place(o, L, t, a) { // turn about the foot of the line, then step across
+        const b = baseOf(o);
+        q.setFromAxisAngle(L.alongX ? X : Z, L.alongX ? a : -a);
+        if (L.alongX) { v.set(0, b.p.y, b.p.z - L.c).applyQuaternion(q); o.position.set(b.p.x + v.x, v.y, L.c + t + v.z); }
+        else { v.set(b.p.x - L.c, b.p.y, 0).applyQuaternion(q); o.position.set(L.c + t + v.x, v.y, b.p.z + v.z); }
+        o.quaternion.copy(q).multiply(b.q); o.updateMatrix();
+      }
+      function colliderOf(w, L, t, a) { // the foot steps across; the side it leans toward thickens to where your head would meet it
+        const c = w.col; if (!c) return;
+        if (!c.base) c.base = { x0: c.x0, x1: c.x1, z0: c.z0, z1: c.z1 };
+        const lean = Math.sin(a) * 1.5;
+        if (L.alongX) { c.z0 = c.base.z0 + t + Math.min(0, lean); c.z1 = c.base.z1 + t + Math.max(0, lean); }
+        else { c.x0 = c.base.x0 + t + Math.min(0, lean); c.x1 = c.base.x1 + t + Math.max(0, lean); }
+      }
+      // what is in the house besides the walls, sorted once the furniture has arrived
+      let sorted = null;
+      const skip = new Set();
+      const inHouse = b => b.min.x > -.4 && b.max.x < 14.4 && b.min.z > -.4 && b.max.z < 13.4 && b.max.y < 3.3 && b.min.y > -.2;
+      function sort(ls) {
+        const wallMeshes = new Set(houseWalls.map(w => w.mesh)), items = [];
+        for (const o of scene.children) {
+          if (wallMeshes.has(o) || skip.has(o) || baked.includes(o) || o.isLight || o.isPoints || o.isSprite || !(o.isMesh || o.isGroup)) continue;
+          if (o.userData.id === 'front_door') continue;
+          const b = new THREE.Box3().setFromObject(o, true); if (b.isEmpty() || !inHouse(b)) continue;
+          items.push({ o, b });
+        }
+        const near = (b, thin) => { // the line this thing hangs on, if any
+          let best = null, bd = thin ? .3 : .16;
+          for (const L of ls) {
+            const lo = L.alongX ? b.min.x : b.min.z, hi = L.alongX ? b.max.x : b.max.z; if (hi < L.a0 - .05 || lo > L.a1 + .05) continue;
+            const p0 = L.alongX ? b.min.z : b.min.x, p1 = L.alongX ? b.max.z : b.max.x;
+            const gap = p0 > L.c ? p0 - (L.c + TH / 2) : p1 < L.c ? (L.c - TH / 2) - p1 : -1;
+            if (gap < bd) { bd = gap; best = L; }
+          }
+          return best;
+        };
+        const hangs = [], floor = [], rest = [];
+        for (const it of items) {
+          const { b, o } = it, h = b.max.y - b.min.y, thick = Math.min(b.max.x - b.min.x, b.max.z - b.min.z), name = o.userData.model || '';
+          if (lamps.some(l => l.parts.some(([p]) => p === o))) continue; // the lamps hang from the ceiling, below
+          it.L = near(b, thick < .3 || name === 'curtain');
+          if (it.L && (name === 'curtain' || (b.min.y < .05 && (h < .15 || thick < .12)))) { hangs.push([o, it.L]); continue; } // skirting, frames, curtains: part of the wall
+          if (b.min.y < .05) { if (h >= .12) floor.push(it); continue; } // flat on the floor: a rug, a book, a print; the walls pass over it
+          rest.push(it);
+        }
+        // what sits on something goes with it; what is fixed to a wall goes with the wall; things that touch are one piece of furniture
+        const groups = floor.map(it => ({ items: [it], b: it.b.clone() }));
+        rest.sort((p, q2) => p.b.min.y - q2.b.min.y);
+        for (const it of rest) {
+          const cx = (it.b.min.x + it.b.max.x) / 2, cz = (it.b.min.z + it.b.max.z) / 2;
+          const on = groups.find(g => cx > g.b.min.x - .06 && cx < g.b.max.x + .06 && cz > g.b.min.z - .06 && cz < g.b.max.z + .06 && it.b.min.y < g.b.max.y + .12);
+          if (on) { on.items.push(it); on.b.union(it.b); }
+          else if (it.L) hangs.push([it.o, it.L]);
+          else if (it.b.min.y > 1.7) continue; // hung from the ceiling
+          else groups.push({ items: [it], b: it.b.clone() });
+        }
+        for (let merged = true; merged;) {
+          merged = false;
+          for (let i = 0; i < groups.length && !merged; i++) for (let j = i + 1; j < groups.length; j++) {
+            const A = groups[i].b.clone().expandByScalar(.02); if (!A.intersectsBox(groups[j].b)) continue;
+            groups[i].items.push(...groups[j].items); groups[i].b.union(groups[j].b); groups.splice(j, 1); merged = true; break;
+          }
+        }
+        for (const g of groups) {
+          g.cols = colliders.filter(c => !c.tag && c.x1 > g.b.min.x - .05 && c.x0 < g.b.max.x + .05 && c.z1 > g.b.min.z - .05 && c.z0 < g.b.max.z + .05 && (!c.mesh || g.items.some(it => it.o === c.mesh)));
+          for (const c of g.cols) c.base = c.base || { x0: c.x0, x1: c.x1, z0: c.z0, z1: c.z1 };
+          for (const it of g.items) baseOf(it.o);
+          g.c = new THREE.Vector3(); g.b.getCenter(g.c);
+          g.yaw = (hash(g.c.x * 7.1 + g.c.z * 3.3) - .5) * .14;
+        }
+        return { hangs, groups };
+      }
+      function unbake(o) { o.traverse(m => { if (statics.has(m)) { statics.delete(m); m.visible = true; m.matrixAutoUpdate = true; (o.userData.rebake ||= []).push(m); } }); o.matrixAutoUpdate = true; }
+      function rebake(o) { for (const m of o.userData.rebake || []) stat(m); o.userData.rebake = null; }
+      function shove(g, ls) { // how far the walls, as they stand now, push this piece into the room
+        let dx = 0, dz = 0;
+        for (const L of ls) {
+          const lo = L.alongX ? g.b.min.x : g.b.min.z, hi = L.alongX ? g.b.max.x : g.b.max.z; if (hi < L.a0 || lo > L.a1) continue;
+          const p0 = L.alongX ? g.b.min.z : g.b.min.x, p1 = L.alongX ? g.b.max.z : g.b.max.x, { t, a } = L.s, hi2 = g.b.max.y;
+          let push = 0;
+          if (p0 >= L.c) { const face = h => L.c + TH / 2 + t + Math.sin(a) * h, into = Math.max(face(hi2), face(g.b.min.y)) - p0; if (into > 0) push = into + .03; }
+          else if (p1 <= L.c) { const face = h => L.c - TH / 2 + t + Math.sin(a) * h, into = p1 - Math.min(face(hi2), face(g.b.min.y)); if (into > 0) push = -(into + .03); }
+          push = clamp(push, -.7, .7);
+          if (L.alongX) dz = Math.abs(push) > Math.abs(dz) ? push : dz; else dx = Math.abs(push) > Math.abs(dx) ? push : dx;
+        }
+        const k = Math.min(1, Math.hypot(dx, dz) / .2), yaw = g.yaw * k;
+        q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
+        for (const it of g.items) { const b = baseOf(it.o); v.copy(b.p).sub(g.c).applyQuaternion(q); it.o.position.set(g.c.x + v.x + dx, b.p.y, g.c.z + v.z + dz); it.o.quaternion.copy(q).multiply(b.q); }
+        for (const c of g.cols) { c.x0 = c.base.x0 + dx; c.x1 = c.base.x1 + dx; c.z0 = c.base.z0 + dz; c.z1 = c.base.z1 + dz; }
+      }
+      let anim = null;
+      function apply(ls) {
+        for (const L of ls) {
+          for (const w of L.walls) { place(w.mesh, L, L.s.t, L.s.a); colliderOf(w, L, L.s.t, L.s.a); }
+          if (sorted) for (const [o, HL] of sorted.hangs) if (HL === L) place(o, L, L.s.t, L.s.a);
+        }
+        if (sorted) for (const g of sorted.groups) shove(g, ls);
+      }
+      function ready(fn) { if (models.loaded >= models.wanted) fn(); else setTimeout(() => ready(fn), 400); }
+      function freeze(ls) { for (const w of houseWalls) if (w.mesh.parent) { statics.delete(w.mesh); w.mesh.visible = true; w.mesh.matrixAutoUpdate = true; } }
+      function settle() { for (const w of houseWalls) if (w.mesh.parent) stat(w.mesh); if (sorted) { for (const [o] of sorted.hangs) rebake(o); for (const g of sorted.groups) for (const it of g.items) rebake(it.o); } bakeStatics(); }
+      function withThings(ls, fn) { // the furniture streams in: sort it once it is all there
+        ready(() => {
+          if (!sorted) sorted = sort(lines());
+          for (const [o] of sorted.hangs) unbake(o); for (const g of sorted.groups) for (const it of g.items) unbake(it.o);
+          fn(lines());
+        });
+      }
+      return {
+        tear() { // the house has moved: every wall a little off true
+          const rand = rng(41), ls = lines();
+          for (const L of ls) L.s.a = (rand() - .5) * .07;
+          freeze(ls); apply(ls); settle();
+          withThings(ls, l2 => { apply(l2); settle(); });
+        },
+        close(instant) { // the house closes: the outside walls step in and lean in, the inside ones lurch
+          const rand = rng(77), ls = lines(), from = new Map(), to = new Map();
+          for (const L of ls) {
+            const inward = L.alongX ? (L.c < 6.5 ? 1 : -1) : (L.c < 7 ? 1 : -1);
+            const step = L.ext ? (L.alongX && L.c > 12.9 || !L.alongX && L.c > 13.9 ? 0 : .34) : (rand() - .5) * .24; // the front door and the hallway's door stay where they open
+            const lean = L.ext ? (.07 + rand() * .06) : (rand() - .5) * .16;
+            from.set(L.k, { ...L.s }); to.set(L.k, { t: L.s.t + (L.ext ? inward * step : step), a: L.s.a + (L.ext ? inward * lean : lean) });
+          }
+          freeze(ls);
+          if (instant) { for (const L of ls) Object.assign(L.s, to.get(L.k)); apply(ls); settle(); withThings(ls, l2 => { apply(l2); settle(); }); return; }
+          anim = { from, to, ls };
+          withThings(ls, l2 => { if (anim) anim.ls = l2; });
+        },
+        step(e) { // 0..1 through the closing
+          if (!anim) return;
+          for (const L of anim.ls) { const f = anim.from.get(L.k), t = anim.to.get(L.k); if (!f) continue; L.s.t = f.t + (t.t - f.t) * e; L.s.a = f.a + (t.a - f.a) * e; }
+          apply(anim.ls);
+        },
+        end() { if (!anim) return; this.step(1); anim = null; settle(); },
+        ceiling() { // the lamps hang from the ceiling, wherever it has got to
+          const d = houseCeiling.position.y - H;
+          for (const l of lamps) if (l.hung) { for (const [o, y] of l.parts) { o.position.y = y + d; if (statics.has(o)) o.matrixAutoUpdate = true; o.updateMatrix(); } l.src.pos.y = l.y0 + d; }
+        },
+        lines, state
+      };
+    }
     function startCollapse() {
       S.collapsePending = false; S.collapseT = 0; S.doorOpen = true;
-      const rand = rng(77);
-      for (const w of houseWalls) {
-        if (!w.mesh.parent) continue;
-        statics.delete(w.mesh); w.mesh.visible = true; w.mesh.matrixAutoUpdate = true; // the walls move on their own for a while
-        const [dx, dz] = leanMore(w, rand);
-        w.lean0 = [w.mesh.rotation.x, w.mesh.rotation.z]; w.lean1 = [w.mesh.rotation.x + dx, w.mesh.rotation.z + dz];
-      }
+      lean().close(false);
+      for (const l of lamps) if (l.hung) for (const [o] of l.parts) statics.delete(o);
       bakeStatics();
       Sound.growl(1.3); shake = 2; torchDip = 1;
       say('The house is closing.', 4000);
@@ -1910,8 +2086,8 @@
       S.collapseT += dt;
       tomStep(S.collapseT);
       const k = clamp(S.collapseT / 26, 0, 1), e = k * k * (3 - 2 * k);
-      for (const w of houseWalls) if (w.lean1 && w.mesh.parent) { w.mesh.rotation.x = w.lean0[0] + (w.lean1[0] - w.lean0[0]) * e; w.mesh.rotation.z = w.lean0[1] + (w.lean1[1] - w.lean0[1]) * e; }
-      houseCeiling.position.y = (S.torn ? H + .6 : H) - .9 * e;
+      lean().step(e);
+      houseCeiling.position.y = (S.torn ? H + .6 : H) - .9 * e; lean().ceiling();
       if (Math.random() < dt / 2.2) { Sound.play('door_close', { gain: .9, rate: .7 + Math.random() * .4 }); shake = Math.max(shake, .8); torchDip = Math.max(torchDip, .5); }
       if (Math.random() < dt / 5) Sound.growl(.6);
       for (const l of lamps) if (l.src.intensity > 0 && Math.random() < dt / 6) { l.src.intensity = 0; l.bulb.visible = false; }
@@ -1920,18 +2096,17 @@
     }
     function endCollapse(outside) {
       S.collapseT = -1; S.collapsed = true;
-      for (const w of houseWalls) if (w.lean1 && w.mesh.parent) { w.mesh.rotation.x = w.lean1[0]; w.mesh.rotation.z = w.lean1[1]; stat(w.mesh); }
-      houseCeiling.position.y = (S.torn ? H + .6 : H) - .9;
-      bakeStatics();
+      houseCeiling.position.y = (S.torn ? H + .6 : H) - .9; lean().ceiling();
+      for (const l of lamps) if (l.hung) for (const [o] of l.parts) if (o !== l.bulb) stat(o);
+      lean().end();
       setTimeout(() => say(outside ? 'The house stops. Tom did not come out.' : 'The house stops. Tom is not in it.', 8000), 1500);
       setTimeout(() => { if (!found.has('collapse')) unlock('collapse'); }, 6500);
     }
     function applyCollapsed() { // a house reopened after it closed
       if (S.collapsed) return; S.collapsed = true; S.doorOpen = true;
       if (!found.has('collapse')) unlock('collapse', false); // reopened in the middle of it: what happened is in the journal
-      const rand = rng(77);
-      for (const w of houseWalls) { if (!w.mesh.parent) continue; const [dx, dz] = leanMore(w, rand); w.mesh.rotation.x += dx; w.mesh.rotation.z += dz; }
-      houseCeiling.position.y = (S.torn ? H + .6 : H) - .9;
+      lean().close(true);
+      houseCeiling.position.y = (S.torn ? H + .6 : H) - .9; lean().ceiling(); bakeStatics();
       openFrontDoor(frontDoor, true);
     }
     function openFrontDoor(p, silent) { // hinged on the west jamb, it swings outward
@@ -2308,6 +2483,8 @@
       // hallway beats by line paid out
       if (G.phase === 'a' && reg === 'maze') S.gone += dt; // how long the camera says you were in there
       if (reg === 'house' && S.gone > 20 && !S.clocked) { S.clocked = true; const watch = Math.max(Math.round(S.gone * 3.7 / 60), Math.round(S.gone / 60) + 30); hud.watch.textContent = `TOM’S WATCH ${tc(watch * 60 + (S.gone % 60))}`; hud.watch.hidden = false; setTimeout(() => { hud.watch.hidden = true; }, 12000); say(`The camera says you were in there ${tc(S.gone).slice(3)}. Tom’s watch says ${watch} minutes. Neither will change its mind.`, 9000); }
+      // outside, at the corner where the hallway should run through the yard: grass, and under it, very far down, Tom's radio
+      if (reg === 'house' && S.collapsed && !S.underYard && P.x > 12.4 && (P.z > 13.4 || P.z < -.4)) { S.underYard = true; Sound.voice({ pitch: 130, dur: 2.2, radio: true, far: 1, level: .7, pos: [18, -6, 8.6] }); setTimeout(() => say('Where the hallway runs, there is only the yard. Grass, and the tree line.', 6000), 400); setTimeout(() => say('Under it, very far down, a radio clicks on. Tom’s voice. Then nothing.', 7000), 6800); }
       if (reg === 'maze' || reg === 'hall') {
         P.lineOut = Math.max(P.lineOut, P.x - G.x0);
         const out = (P.x - G.x0) * FT;
