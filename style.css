@@ -833,6 +833,9 @@ main > .colophon {
   cursor: pointer;
 }
 .hud-prompt:hover { border-color: rgba(217, 216, 210, .9); }
+.hud-stick { position: absolute; width: 96px; height: 96px; margin: -48px 0 0 -48px; border: 1px solid rgba(217, 216, 210, .35); border-radius: 50%; background: rgba(11, 11, 13, .25); }
+.hud-stick i { position: absolute; left: 50%; top: 50%; width: 40px; height: 40px; border-radius: 50%; background: rgba(217, 216, 210, .55); transform: translate(-50%, -50%); }
+.hud-stick[hidden] { display: none; }
 .hud-corner { position: absolute; top: calc(14px + env(safe-area-inset-top, 0px)); right: calc(var(--gutter) + env(safe-area-inset-right, 0px)); display: flex; gap: 8px; pointer-events: auto; }
 .hud-btn {
   padding: .55em 1em;

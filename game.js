@@ -479,7 +479,7 @@
   const hud = {
     sub: $('[data-sub]'), prompt: $('[data-prompt]'), meter: $('[data-meter]'), rec: $('[data-rec]'),
     journal: $('[data-journal]'), sound: $('[data-sound]'), quality: $('[data-quality]'), veil: $('[data-veil]'), card: $('[data-card]'),
-    loading: $('[data-loading]'), loadBar: $('[data-load-bar]'), loadText: $('[data-load-text]')
+    loading: $('[data-loading]'), loadBar: $('[data-load-bar]'), loadText: $('[data-load-text]'), stick: $('[data-stick]')
   };
   let subTimer = 0;
   function say(text, ms = 5200) {
@@ -1050,7 +1050,7 @@
         carve(L + 1, L + 3, 62, 70); carve(L + 3, L + 5, 84, 92);
       } else if (phase === 'empty') { // nothing but corridor, wider as it goes, and from a certain point no ceiling at all
         L = W - 3; G.hallStart = 9999;
-        for (let i = 0; i < W - 3; i++) { const half = i >= 108 && i < 126 ? 0 : 1 + Math.floor(Math.max(0, i - 60) / 26); carve(i, i, 77 - half, 77 + half); }
+        for (let i = 0; i < W - 3; i++) { if (i >= 108 && i < 126) carve(i, i, 77, 78); else { const half = 1 + Math.floor(Math.max(0, i - 60) / 26); carve(i, i, 77 - half, 77 + half); } }
         G.tall = [70, 108]; G.low = [108, 126]; // the ceiling goes, then the passage narrows to a crawl, then it opens out again
       } else {
         L = L || (phase === 'short' ? 16 : 140);
@@ -1298,6 +1298,7 @@
       if ((e.code === 'Enter' || e.code === 'Space') && e.target.closest && e.target.closest('button, a, input')) return; // the control has it
       if (e.code === 'KeyE' || e.code === 'Enter' || e.code === 'Space') { if (target) { interact(target); e.preventDefault(); } }
       if (e.code === 'KeyJ') { openJournal(jPage.dataset.id); e.preventDefault(); }
+      if (e.code === 'KeyI') { const inv = !store.get('invert', false); store.set('invert', inv); say(inv ? 'Mouse inverted. I again to put it back.' : 'Mouse as it was.', 3000); e.preventDefault(); }
     });
     addEventListener('keyup', e => { if (KEYMAP[e.code]) keys.delete(KEYMAP[e.code]); });
     addEventListener('blur', () => keys.clear());
@@ -1315,19 +1316,23 @@
     });
     document.addEventListener('mousemove', e => {
       if (!document.pointerLockElement) return;
-      P.yaw -= e.movementX * .0021; P.pitch = clamp(P.pitch - e.movementY * .0021, -1.35, 1.35);
+      P.yaw -= e.movementX * .0021; P.pitch = clamp(P.pitch - e.movementY * .0021 * (store.get('invert', false) ? -1 : 1), -1.35, 1.35);
     });
     // touch: left half walks, the rest looks
     const fingers = new Map();
     let stick = { dx: 0, dz: 0 };
     canvas.addEventListener('touchstart', e => {
-      for (const t of e.changedTouches) fingers.set(t.identifier, { x0: t.clientX, y0: t.clientY, x: t.clientX, y: t.clientY, t0: performance.now(), move: t.clientX < innerWidth * .45 });
+      for (const t of e.changedTouches) {
+        const move = t.clientX < innerWidth * .45;
+        fingers.set(t.identifier, { x0: t.clientX, y0: t.clientY, x: t.clientX, y: t.clientY, t0: performance.now(), move });
+        if (move && hud.stick) { hud.stick.hidden = false; hud.stick.style.left = t.clientX + 'px'; hud.stick.style.top = t.clientY + 'px'; hud.stick.firstElementChild.style.transform = 'translate(-50%, -50%)'; } // the stick shows where the finger landed
+      }
       e.preventDefault();
     }, { passive: false });
     canvas.addEventListener('touchmove', e => {
       for (const t of e.changedTouches) {
         const f = fingers.get(t.identifier); if (!f) continue;
-        if (f.move) { stick.dx = clamp((t.clientX - f.x0) / 60, -1, 1); stick.dz = clamp((t.clientY - f.y0) / 60, -1, 1); }
+        if (f.move) { stick.dx = clamp((t.clientX - f.x0) / 60, -1, 1); stick.dz = clamp((t.clientY - f.y0) / 60, -1, 1); if (hud.stick) hud.stick.firstElementChild.style.transform = `translate(calc(-50% + ${stick.dx * 34}px), calc(-50% + ${stick.dz * 34}px))`; }
         else { P.yaw -= (t.clientX - f.x) * .0048; P.pitch = clamp(P.pitch - (t.clientY - f.y) * .0048, -1.35, 1.35); }
         f.x = t.clientX; f.y = t.clientY;
       }
@@ -1336,7 +1341,7 @@
     const endTouch = e => {
       for (const t of e.changedTouches) {
         const f = fingers.get(t.identifier); if (!f) continue;
-        if (f.move) stick = { dx: 0, dz: 0 };
+        if (f.move) { stick = { dx: 0, dz: 0 }; if (hud.stick) hud.stick.hidden = true; }
         if (performance.now() - f.t0 < 300 && Math.hypot(t.clientX - f.x0, t.clientY - f.y0) < 12 && target && !game.paused && !game.ended) interact(target); // a tap
         fingers.delete(t.identifier);
       }
@@ -1375,7 +1380,7 @@
 
     /* ---------- story wiring ---------- */
 
-    const S = { closet: false, hallway: false, torn: false, fleeing: false, explore5: false, arrived: false, grewA: false, turnA: false, regrow: null, regrowText: null, collapsePending: false, collapseT: -1, collapsed: false, doorOpen: false, doorAjar: false, quarterAt: 0, stairShort: false, saidDoor: false, saidAnte: false, farOut: false };
+    const S = { closet: false, hallway: false, torn: false, fleeing: false, explore5: false, arrived: false, grewA: false, turnA: false, regrow: null, regrowText: null, collapsePending: false, collapseT: -1, collapsed: false, doorOpen: false, doorAjar: false, quarterAt: 0, stairShort: false, saidDoor: false, saidAnte: false, farOut: false, saidCam: false, saidBottom: false };
     const mazePhase = () => found.has('ch9') ? 'empty' : found.has('ch7') ? 'short' : found.has('explA') ? 'long' : 'a';
     function openCloset(silent) {
       if (S.closet) return; S.closet = true;
@@ -1697,6 +1702,8 @@
         const depth = stair.depth();
         P.walked += Math.hypot(P.vx, P.vz) * dt;
         stair.deepest = Math.max(stair.deepest, depth);
+        if (depth > 33 && depth < 60 && !found.has('ch7') && !S.saidCam) { S.saidCam = true; say('You passed a camera on its side, a few treads up. Its battery is dead. Its tape is not.', 8000); }
+        if (depth > 52 && !S.saidBottom) { S.saidBottom = true; say('There is nothing below that you need. Everything you came for is above you.', 8000); }
         while (stair.beat < STAIR_BEATS.length && depth >= STAIR_BEATS[stair.beat][0]) { const [, text, fx] = STAIR_BEATS[stair.beat++]; say(text); if (fx === 'growl') { Sound.growl(); shake = 1; torchDip = 1; } }
         if (depth > 20 && Math.random() < dt / 40) { Sound.growl(.6); shake = .6; torchDip = .7; }
         hud.meter.textContent = `Down: ${fmt(depth * FT)} ft. Steps: ${fmt(depth / RISE)}.`;
@@ -1855,7 +1862,7 @@
       if (game.ended) return; // the end card is already up
       setTimeout(() => Sound.play('door_close', { gain: .8, rate: .9 }), 1400);
       setTimeout(() => {
-        card(`<p class="card-kicker">Ash Tree Lane</p><p>The house is empty. Whatever they left is still inside.</p><p class="card-help">${touch ? 'Drag on the left to walk, on the right to look. Tap what you find.' : 'Click to look around. Walk with WASD or ZQSD, turn with the arrow keys. Press E for what you find, J for the journal.'}</p>`, 9000);
+        card(`<p class="card-kicker">Ash Tree Lane</p><p>The house is empty. Whatever they left is still inside.</p><p class="card-help">${touch ? 'Drag on the left to walk, on the right to look. Tap what you find.' : 'Click to look around. Walk with WASD or ZQSD, turn with the arrow keys. Press E for what you find, J for the journal, I to invert the mouse.'}</p>`, 9000);
       }, 400);
       if (found.size > 2 && !game.ended) setTimeout(() => say('You have been here before. What you found is still in the journal.', 6000), 10000);
     }
