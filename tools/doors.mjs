@@ -54,8 +54,8 @@ check('torn: living room, into the kitchen', ...(r => [r.ok, r])(await walk(7.2,
 await page.evaluate(() => { for (const id of ['ch8', 'ch9']) ATL.unlock(id, false); ATL.teleport(3, 12, 0); });
 await page.waitForFunction(() => ATL.G.phase === 'empty', null, { timeout: 20000 });
 const low = await page.evaluate(() => ({ x0: ATL.G.x0, T: ATL.G.T, a: ATL.G.low[0], b: ATL.G.low[1] }));
-check('crawlspace: in through its mouth', ...(r => [r.ok, r])(await walk(low.x0 + (low.a - 3) * low.T, 8.75, E, () => ATL.P.x > low.x0 + (low.a + 3) * low.T, 90000)));
-check('crawlspace: out the far end', ...(r => [r.ok, r])(await walk(low.x0 + (low.b - 3) * low.T, 8.75, E, () => ATL.P.x > low.x0 + (low.b + 3) * low.T, 90000)));
+check('crawlspace: in through its mouth', ...(r => [r.ok, r])(await walk(low.x0 + (low.a - 3) * low.T, 8.75, E, () => ATL.P.x > ATL.G.x0 + (ATL.G.low[0] + 3) * ATL.G.T, 90000)));
+check('crawlspace: out the far end', ...(r => [r.ok, r])(await walk(low.x0 + (low.b - 3) * low.T, 8.75, E, () => ATL.P.x > ATL.G.x0 + (ATL.G.low[1] + 3) * ATL.G.T, 90000)));
 check('torn: teleport into the house stays there', ...(r => [r.x < 13.5, r])(await (async () => { await page.evaluate(() => { ATL.teleport(13.4, 8.5, Math.PI / 2); }); await page.waitForTimeout(400); return page.evaluate(() => ({ x: +ATL.P.x.toFixed(2), region: ATL.P.region })); })()));
 const lean = await page.evaluate(() => { let leaning = 0, stale = 0; for (const m of ATL.statics) { if (!m.rotation || (!m.rotation.z && !m.rotation.x)) continue; leaning++; const e = new (m.matrix.constructor)().compose(m.position, m.quaternion, m.scale); if (!m.matrix.equals(e)) stale++; } return { leaning, stale }; });
 check('torn: leaning walls carry their lean into the bake', lean.stale === 0 && lean.leaning > 0, lean);
