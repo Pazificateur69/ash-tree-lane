@@ -36,5 +36,23 @@ for (const [name, found] of Object.entries(STATES)) {
   if (!ok) failed++;
   await page.close();
 }
+// where you were: a place in Holloway's corridor comes back; a place inside a wall does not
+for (const [name, pos, expectBack] of [['pos corridor', { x: 30.5, z: 8.7, yaw: -1.57, phase: 'long', torn: false, collapsed: false }, true], ['pos in wall', { x: 30.5, z: 3.1, yaw: 0, phase: 'long', torn: false, collapsed: false }, false], ['pos stale', { x: 30.5, z: 8.7, yaw: 0, phase: 'a', torn: false, collapsed: false }, false]]) {
+  const page = await browser.newPage({ viewport: { width: 640, height: 360 } });
+  const errors = []; page.on('pageerror', e => errors.push(e.message));
+  await page.addInitScript(([f, p]) => { localStorage.setItem('atl:found', JSON.stringify(f)); localStorage.setItem('atl:pos', JSON.stringify(p)); localStorage.setItem('atl:low', 'true'); }, [STATES.holloway, pos]);
+  await page.goto('http://127.0.0.1:8123/index.html?t=' + Date.now(), { waitUntil: 'load' });
+  await page.click('#enter');
+  let ok = false;
+  try {
+    await page.waitForFunction(() => window.ATL && window.ATL.loaded(), null, { timeout: 120000 });
+    await page.waitForTimeout(600);
+    const st = await page.evaluate(() => ({ x: +ATL.P.x.toFixed(1), z: +ATL.P.z.toFixed(1), resumed: !!ATL.S.resumed }));
+    ok = errors.length === 0 && st.resumed === expectBack && (expectBack ? Math.abs(st.x - pos.x) < .5 : st.x < 5);
+    console.log((ok ? 'PASS' : 'FAIL').padEnd(5), name.padEnd(12), JSON.stringify(st), errors.join(' | '));
+  } catch (e) { console.log('FAIL', name, e.message.split('\n')[0]); }
+  if (!ok) failed++;
+  await page.close();
+}
 await browser.close();
 process.exit(failed ? 1 : 0);

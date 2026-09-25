@@ -28,30 +28,31 @@ Open the door on the title page. Then:
 | Walk | `W A S D` or `Z Q S D`, `Shift` to hurry; the arrow keys turn, Page Up and Page Down look up and down | drag on the left half |
 | Jump | `Space` (a small one; the well in the Hall has no bottom, and the index keeps count) | |
 | Invert the mouse | `I` | |
+| Gamepad | left stick walks, right stick looks, A takes, X jumps, Y opens the journal, B closes it | |
 | Pick up / open | `E`, `Enter` or click, when something is named at the bottom | tap the label |
 | Journal | `J` or the button top right | the button top right |
 | Leave a room, close a page | `Esc` | the button |
 
 A full walk takes twenty to forty minutes. Progress is kept in your own browser only (no account, no cookies, no tracking), so you can leave and come back; the house remembers what you found and keeps its doors open. If you would rather not play, **or just read** on the title page opens the journal complete.
 
-Headphones are worth it. The drone, the growl and the burning pages are synthesized in the browser; the footsteps that echo late in the hallway, the creak of a door that was not there and the wind at the windows are recordings.
+Headphones are worth it. The drone, the growl, the burning pages and the voices on the tapes are synthesized in the browser (the voices are a buzz through moving vowel formants, run through a tape or a radio: you hear someone talking and cannot quite make them out); the footsteps that echo late in the hallway, the creak of a door that was not there and the wind at the windows are recordings. The growl comes from one side and moves round you. The Great Hall is almost silent.
 
 ## What happens, in order (light spoilers)
 
 1. **The house.** Foyer, kitchen, living room, two bedrooms, the yard under the stars through the windows. A trunk that is not theirs holds the story of how the papers were found. Tapes, a tape measure, a photograph face down and a specimen bag hold the first chapters: the move, the quarter of an inch, the hallway, Karen, and what the laboratory made of the walls.
 2. **A quarter of an inch.** Read the measurements and a door appears between the bedrooms. Behind it, a closet that was never there, and a tape labeled 5½.
-3. **Exploration A.** The living room's east wall opens onto an ash-gray corridor, colder than the season. Fishing line is tied off at the frame. Forty feet in, a room with two dark mouths, and Navidson's Hi8 on the floor where he set it down. Turn round: the corridor is longer than it was.
-4. **Holloway's corridor.** Once the tape is read, the hallway is his: rooms off the corridor (never the same rooms twice), Zampanò's page on echoes, the explorers' cache, a stretch where the walls go up out of the light, and an anteroom with a doorway on every side. Doorways you passed are gone when you look back. Walls you passed have doorways. At the forty-metre mark the Hall recedes and the corridor is longer than it was.
-5. **The Great Hall and the staircase.** Your light goes out into the hall and does not come back. Far off, at floor level, a light someone else left burning: Tom's lantern, his chair, his recorder and his jokes at the lip of the well, next to a hand-drawn map that stops at the stairs, and a quarter to drop into the well and listen to. Going down, you find what the fourth exploration left behind: the shredded markers, the landing where Jed kept Wax alive, Holloway's camera. Coming back up with his tape read, the staircase adds to itself under you.
+3. **Exploration A.** The living room's east wall opens onto an ash-gray corridor at freezing, whatever the season. Fishing line is tied off at the frame. A few steps in, the children's voices, from much farther off than the yard goes. Forty feet in, a room with two dark mouths, and Navidson's Hi8 on the floor where he set it down. Turn round: the corridor is longer than it was.
+4. **Holloway's corridor.** Once the tape is read, the hallway is his: rooms off the corridor (never the same rooms twice), Zampanò's page on echoes, the explorers' cache, a side corridor that is the same corridor however far you walk it until you turn round, a stretch where the walls go up out of the light, and an anteroom with a doorway on every side. Doorways you passed are gone when you look back. Walls you passed have doorways. At the forty-metre mark the Hall recedes and the corridor is longer than it was.
+5. **The Great Hall and the staircase.** Your light goes out into the hall and does not come back. Far off, at floor level, a light someone else left burning: Tom's lantern, his chair, his recorder, and Tom on the radio telling jokes to the dark. A hand-drawn map that stops at the stairs, and a quarter to drop into the well and listen to. Going down, you find what the fourth exploration left behind: the shredded markers, the landing where Jed kept Wax alive, Holloway's camera. The thermometer drops with every turn. Coming back up with his tape read, the staircase adds to itself under you. (You can also jump into the well. The index keeps count, and there is a page for those who do.)
 6. **The house has moved.** Stepping off the top tread tears the house: the corridor is shorter than it was, the house leans, the floor has opened, the lamps are dead and the television is showing static. Tom's rig for the wounded is at the lip of the well.
 7. **The house closes.** Read the rescue and go home: the walls lean in, the ceiling comes down, doors slam, the lamps go one by one, and the front door opens outward for the first time. Get out. Tom does not.
-8. **What the house took.** Tom's radio and Karen's tapes are what is left. She leaves with the children.
-9. **Exploration #5.** The hallway has nothing in it now: no rooms, no line, walls that draw apart as you go, a ceiling that is gone, a passage that narrows until you are on your hands and knees past the bicycle he left, and then no floor. A dark with no dimensions, a book, and something to light it with. Then a light that is not yours.
-10. **Vermont**, and at the back of the journal, the letters, the exhibits and the index.
+8. **What the house took.** Tom's radio and Karen's tapes are what is left. She leaves with the children. The voices on the tapes are hers.
+9. **Exploration #5.** The hallway has nothing in it now: no rooms, no line, walls that draw apart as you go, a ceiling that is gone, a room whose walls close in until it is a corridor again, a passage that narrows until you are on your hands and knees past the bicycle he left, and then no floor. A dark with no dimensions, a book, and something to light it with. Then a light that is not yours, coming closer, and someone saying your name.
+10. **Vermont**, with a list of whatever you left in the house, and at the back of the journal the letters, the exhibits, the index, and a page for those who went into the well.
 
 ## The journal
 
-The journal is the book side of the project: a retelling of the novel in new words, in the novel's structure. Eighteen chapters, an introduction, thirty-seven notes, the Whalestoe letters, an appendix of exhibits and contrary evidence, and an index.
+The journal is the book side of the project: a retelling of the novel in new words, in the novel's structure. Eighteen chapters, an introduction, thirty-seven notes, the Whalestoe letters, an appendix of exhibits and contrary evidence, a page you only get one way, and an index.
 
 - **Four voices, four typefaces**, as in the book: Zampanò's study of *The Navidson Record* in Times, Johnny Truant's interruptions in Courier, the Editors in Bookman, and Pelafina's letters in Goudy.
 - **house** is blue wherever it appears, in any language. The struck-through passages about the minotaur are red.

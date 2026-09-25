@@ -82,7 +82,7 @@
      ================================================================ */
 
   const BOOK = $('#book'); BOOK.remove(); // the book is in the page for readers without script; with script it is read from here
-  const ORDER = ['edition', 'introduction', 'ch1', 'ch2', 'ch3', 'explA', 'karen', 'explorations', 'ch4', 'ch5', 'samples', 'ch6', 'tom', 'ch7', 'rescue', 'collapse', 'ch8', 'ch9', 'ch10', 'ch11', 'letters', 'exhibits', 'index', 'colophon'];
+  const ORDER = ['edition', 'introduction', 'ch1', 'ch2', 'ch3', 'explA', 'karen', 'explorations', 'ch4', 'ch5', 'samples', 'ch6', 'tom', 'ch7', 'rescue', 'collapse', 'ch8', 'ch9', 'ch10', 'ch11', 'letters', 'exhibits', 'well', 'index', 'colophon'];
   const FREE = ['edition', 'colophon'];
   const TITLES = Object.fromEntries(ORDER.map(id => [id, BOOK.querySelector('#' + id).dataset.title]));
   const savedFound = store.get('found', FREE);
@@ -375,9 +375,10 @@
       if (on && !this.timbers && this.bufs.timbers) this.timbers = this.loop('timbers', .22, 6);
       else if (!on && this.timbers) { this.stopLoop(this.timbers, 3); this.timbers = null; }
     },
-    growl(level = 1) {
+    growl(level = 1, sweep = null) {
       if (!this.ctx) return;
       const c = this.ctx, t = c.currentTime;
+      if (sweep == null) sweep = [(Math.random() * 2 - 1), (Math.random() * 2 - 1)]; // it comes from somewhere, and it moves
       const src = this.noise(), lp = c.createBiquadFilter(), g = c.createGain();
       lp.type = 'lowpass'; lp.Q.value = 7;
       lp.frequency.setValueAtTime(60, t); lp.frequency.linearRampToValueAtTime(140, t + 1.4); lp.frequency.linearRampToValueAtTime(55, t + 4.5);
@@ -388,7 +389,7 @@
       g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(.9 * level, t + 1.2); g.gain.setTargetAtTime(0, t + 2.2, .9);
       src.connect(lp).connect(g);
       o.connect(olp).connect(og).connect(g);
-      g.connect(this.bus);
+      if (c.createStereoPanner) { const pn = c.createStereoPanner(); pn.pan.setValueAtTime(sweep[0], t); pn.pan.linearRampToValueAtTime(sweep[1], t + 4.5); g.connect(pn).connect(this.bus); } else g.connect(this.bus);
       src.start(t); o.start(t); src.stop(t + 7); o.stop(t + 7);
     },
     step(hard, echo) {
@@ -438,6 +439,63 @@
         o.connect(g).connect(this.bus); o.start(at); o.stop(at + 1.5);
         at += gap; gap *= 1.22; level *= .84;
       }
+    },
+    // a voice you can hear but not make out: a buzz through moving vowel formants, syllable by syllable, then the tape it was recorded on
+    voice({ pitch = 120, dur = 3, pan = 0, far = 0, radio = false, level = .5, at = 0 } = {}) {
+      if (!this.ctx) return;
+      const c = this.ctx, t0 = c.currentTime + .05 + at;
+      const VOW = [[730, 1090, 2440], [530, 1840, 2480], [270, 2290, 3010], [570, 840, 2410], [300, 870, 2240], [660, 1720, 2410], [490, 1350, 1690]];
+      const o = c.createOscillator(); o.type = 'sawtooth';
+      const wow = c.createOscillator(), wowG = c.createGain(); wow.frequency.value = .7 + Math.random() * .6; wowG.gain.value = radio ? 6 : 14; wow.connect(wowG).connect(o.detune); // the tape is not quite steady
+      const env = c.createGain(); env.gain.value = 0;
+      const mix = c.createGain(); mix.gain.value = 1;
+      const fs = [0, 1, 2].map(k => { const f = c.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = k === 0 ? 7 : 11; const g = c.createGain(); g.gain.value = [1, .55, .22][k]; o.connect(f).connect(g).connect(env); return f; });
+      const hp = c.createBiquadFilter(), lp = c.createBiquadFilter(), sh = c.createWaveShaper(), pn = c.createStereoPanner ? c.createStereoPanner() : null, out = c.createGain();
+      hp.type = 'highpass'; hp.frequency.value = radio ? 480 : 220; lp.type = 'lowpass'; lp.frequency.value = (radio ? 2600 : 3600) * (1 - far * .6);
+      const curve = new Float32Array(256); for (let i = 0; i < 256; i++) { const x = i / 128 - 1; curve[i] = Math.tanh(x * (radio ? 4 : 2)); } sh.curve = curve;
+      out.gain.value = level * (1 - far * .75);
+      env.connect(hp).connect(sh).connect(lp);
+      let tail = lp; if (pn) { pn.pan.value = clamp(pan, -1, 1); tail.connect(pn); tail = pn; }
+      tail.connect(out); out.connect(far > .3 ? this.bus : this.out); if (far > .3) out.connect(this.send);
+      let t = t0, p = pitch * (.95 + Math.random() * .1);
+      o.frequency.setValueAtTime(p, t);
+      while (t < t0 + dur) {
+        if (Math.random() < .14) { t += .12 + Math.random() * .25; continue; } // a breath between words
+        const len = .09 + Math.random() * .2, v = VOW[Math.floor(Math.random() * VOW.length)];
+        p = clamp(p * (1 + (Math.random() - .5) * .18), pitch * .75, pitch * 1.35);
+        o.frequency.linearRampToValueAtTime(p, t + len * .6);
+        fs.forEach((f, k) => f.frequency.linearRampToValueAtTime(v[k] * (.94 + Math.random() * .12) * (pitch > 180 ? 1.15 : 1), t + len * .5));
+        env.gain.setTargetAtTime(.9, t, .012); env.gain.setTargetAtTime(.0, t + len * .85, .03);
+        t += len;
+      }
+      o.frequency.linearRampToValueAtTime(p * .85, t + .2); // the sentence falls at the end
+      o.start(t0); wow.start(t0); o.stop(t + .6); wow.stop(t + .6);
+      // the tape hiss or the radio's static under it
+      const n = this.noise(), nf = c.createBiquadFilter(), ng = c.createGain();
+      nf.type = radio ? 'bandpass' : 'highpass'; nf.frequency.value = radio ? 1800 : 3000; nf.Q.value = .8;
+      ng.gain.setValueAtTime(0, t0 - .05); ng.gain.linearRampToValueAtTime((radio ? .09 : .035) * (1 - far * .7), t0 + .1); ng.gain.setTargetAtTime(0, t + .1, .15);
+      n.connect(nf).connect(ng); (pn ? ng.connect(pn) : ng.connect(out)); n.start(t0 - .05); n.stop(t + 1);
+      if (radio) for (let k = 0; k < 3; k++) { const at2 = t0 + Math.random() * dur; ng.gain.setValueAtTime(.3 * (1 - far * .7), at2); ng.gain.setTargetAtTime(.09 * (1 - far * .7), at2 + .05, .05); } // squelch
+    },
+    grind(on) { // stone on stone: a wall that is moving
+      if (!this.ctx) return;
+      const t = this.ctx.currentTime;
+      if (on && !this.grinding) {
+        const src = this.noise(), bp = this.ctx.createBiquadFilter(), g = this.ctx.createGain(), lfo = this.ctx.createOscillator(), lg = this.ctx.createGain();
+        bp.type = 'bandpass'; bp.frequency.value = 140; bp.Q.value = 1.4; lfo.frequency.value = 7; lg.gain.value = .12;
+        lfo.connect(lg).connect(g.gain); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(.45, t + .6);
+        src.connect(bp).connect(g).connect(this.bus); src.start(); lfo.start();
+        this.grinding = { src, g, lfo };
+      } else if (!on && this.grinding) {
+        const { src, g, lfo } = this.grinding; g.gain.cancelScheduledValues(t); g.gain.setTargetAtTime(0, t, .3); src.stop(t + 2); lfo.stop(t + 2); this.grinding = null;
+      }
+    },
+    swell(dur = 4) { // the house letting go: everything at once, then nothing
+      if (!this.ctx) return;
+      const c = this.ctx, t = c.currentTime, n = this.noise(), f = c.createBiquadFilter(), g = c.createGain();
+      f.type = 'lowpass'; f.frequency.setValueAtTime(120, t); f.frequency.exponentialRampToValueAtTime(5000, t + dur * .8);
+      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(.7, t + dur * .8); g.gain.linearRampToValueAtTime(0, t + dur);
+      n.connect(f).connect(g).connect(this.bus); n.start(t); n.stop(t + dur + .2);
     },
     click() {
       if (!this.ctx) return;
@@ -701,6 +759,13 @@
           #endif
           #ifdef USE_ROUGHNESSMAP
             vRoughnessMapUv = wuv;
+          #endif`);
+        // up close, the same stone again at seven times the scale: the grain a wall has when your face is next to it
+        shader.fragmentShader = shader.fragmentShader.replace('#include <map_fragment>', `#include <map_fragment>
+          #ifdef USE_MAP
+            float nearK = 1.0 - smoothstep(1.2, 5.5, length(vViewPosition));
+            float dl = dot(texture2D(map, vMapUv * 7.3).rgb, vec3(0.3333));
+            diffuseColor.rgb *= 1.0 + (dl - 0.4818) * 3.2 * nearK;
           #endif`);
       };
       return m;
@@ -1042,7 +1107,7 @@
     function genMaze(phase, L) {
       const { W, D } = G; const t = G.tiles = new Uint8Array(W * D).fill(1);
       const carve = (i0, i1, j0, j1) => { for (let j = Math.max(0, j0); j <= Math.min(D - 1, j1); j++) for (let i = Math.max(0, i0); i <= Math.min(W - 1, i1); i++) t[i + j * W] = 0; };
-      G.phase = phase; G.short = phase === 'short'; G.tall = null; G.ante = null; G.low = null;
+      G.phase = phase; G.short = phase === 'short'; G.tall = null; G.ante = null; G.low = null; G.shrink = null; G.loop = null;
       if (phase === 'a') { // a corridor that ends in a room with two dark mouths, and a stub that stops
         L = L || 24; G.hallStart = 9999;
         carve(0, L, 76, 78);
@@ -1053,6 +1118,7 @@
         L = W - 3; G.hallStart = 9999;
         for (let i = 0; i < W - 3; i++) { if (i >= 108 && i < 126) carve(i, i, 77, 78); else { const half = 1 + Math.floor(Math.max(0, i - 60) / 26); carve(i, i, 77 - half, 77 + half); } }
         G.tall = [70, 108]; G.low = [108, 126]; // the ceiling goes, then the passage narrows to a crawl, then it opens out again
+        carve(88, 106, 66, 88); G.shrink = [88, 106, 66, 88]; // a room, just before the crawl, that will not stay a room
       } else {
         L = L || (phase === 'short' ? 16 : 140);
         G.hallStart = L + 4;
@@ -1066,6 +1132,8 @@
             i += 12 + Math.floor(rand() * 14);
           }
           G.tall = [100, 116]; // a stretch where the light goes up and does not arrive anywhere
+          for (let j = 2; j <= 74; j++) for (let i = 59; i <= 67; i++) t[i + j * W] = 1; // a side corridor with nothing in it, so that it can be the same corridor twice
+          carve(62, 64, 4, 75); G.loop = [62, 64];
           carve(L - 16, L - 4, 67, 87); carve(L - 11, L - 9, 58, 66); carve(L - 11, L - 9, 88, 96); // the anteroom, with a mouth on every side
           G.ante = [L - 16, L - 4];
         }
@@ -1229,7 +1297,7 @@
       }
       // the page about echoes lies in the first room off the corridor
       let firstDoor = null;
-      for (let i = 10; i < 60 && !firstDoor; i++) { if (tileAt(i, 75) === 0) firstDoor = [i, -1]; else if (tileAt(i, 79) === 0) firstDoor = [i, 1]; }
+      for (let i = 10; i < 58 && !firstDoor; i++) { if (tileAt(i, 75) === 0) firstDoor = [i, -1]; else if (tileAt(i, 79) === 0) firstDoor = [i, 1]; }
       const pd = firstDoor || [20, -1];
       const pj = pd[1] < 0 ? 70 : 84;
       G.firstDoor = pd[0]; // the door the page lies behind is one the house does not take away before you have read it
@@ -1382,7 +1450,7 @@
 
     /* ---------- story wiring ---------- */
 
-    const S = { closet: false, hallway: false, torn: false, fleeing: false, explore5: false, arrived: false, grewA: false, turnA: false, regrow: null, regrowText: null, collapsePending: false, collapseT: -1, collapsed: false, doorOpen: false, doorAjar: false, quarterAt: 0, stairShort: false, saidDoor: false, saidAnte: false, farOut: false, saidCam: false, saidBottom: false, falling: 0 };
+    const S = { closet: false, hallway: false, torn: false, fleeing: false, explore5: false, arrived: false, grewA: false, turnA: false, regrow: null, regrowText: null, collapsePending: false, collapseT: -1, collapsed: false, doorOpen: false, doorAjar: false, quarterAt: 0, stairShort: false, saidDoor: false, saidAnte: false, farOut: false, saidCam: false, saidBottom: false, falling: 0, kids: 0, radioT: 20, joke: 0, loops: 0, letGo: false, shrinkT: -1, shrunk: false, far: 0 };
     const mazePhase = () => found.has('ch9') ? 'empty' : found.has('ch7') ? 'short' : found.has('explA') ? 'long' : 'a';
     function openCloset(silent) {
       if (S.closet) return; S.closet = true;
@@ -1474,6 +1542,8 @@
         return;
       }
       if (u.quarter) { dropQuarter(p); return; }
+      const TAPE = { tape1: [118, 5], tape2: [118, 4], navidson_cam: [118, 6], holloway_cam: [96, 7], tom: [128, 6], karen_tapes: [212, 6], radio: [128, 5, true] }; // who is on the tape, for how long
+      if (TAPE[u.id]) { const [pitch, dur, radio] = TAPE[u.id]; Sound.voice({ pitch, dur, radio: !!radio, level: .42, at: .5 }); }
       if (u.say) say(u.say);
       if (u.chapter) {
         Sound.click();
@@ -1516,9 +1586,11 @@
       houseCeiling.position.y = (S.torn ? H + .6 : H) - .9;
       bakeStatics();
       setTimeout(() => say(outside ? 'The house stops. Tom did not come out.' : 'The house stops. Tom is not in it.', 8000), 1500);
+      setTimeout(() => { if (!found.has('collapse')) unlock('collapse'); }, 6500);
     }
     function applyCollapsed() { // a house reopened after it closed
       if (S.collapsed) return; S.collapsed = true; S.doorOpen = true;
+      if (!found.has('collapse')) unlock('collapse', false); // reopened in the middle of it: what happened is in the journal
       const rand = rng(77);
       for (const w of houseWalls) { if (!w.mesh.parent) continue; const [dx, dz] = leanMore(w, rand); w.mesh.rotation.x += dx; w.mesh.rotation.z += dz; }
       houseCeiling.position.y = (S.torn ? H + .6 : H) - .9;
@@ -1536,6 +1608,58 @@
       scene.remove(p); dropPickup(p); target = null; hud.prompt.hidden = true;
       S.quarterAt = t; Sound.coin(); say('Listen.', 2500); setTimeout(() => say('You will not hear it land.', 7000), 7000);
     }
+    const panTo = (x, z) => { const dx = x - P.x, dz = z - P.z, d = Math.hypot(dx, dz) || 1; return clamp((dx * Math.cos(P.yaw) - dz * Math.sin(P.yaw)) / d, -1, 1); };
+    // the cold: the hallway holds at freezing, and the deeper you go the less it holds
+    const temperature = () => {
+      const reg = P.region;
+      if (reg === 'house') return S.torn ? 51 : 68;
+      if (reg === 'stair') return 32 - Math.min(16, stair.depth() * .3);
+      if (G.phase === 'empty') return 31 - Math.min(22, Math.max(0, P.x - G.x0) / 4);
+      return 34 - Math.min(5, Math.max(0, P.x - G.x0) / 20);
+    };
+    const TOM_JOKES = [
+      'Tom, on the radio: “Mr. Monster, if you can hear me, I brought marshmallows. Knock once for yes.”',
+      'Tom, on the radio: “Day three. The dark and I have agreed not to talk about politics.”',
+      'Tom, on the radio: “Navy, if you get to the bottom, don’t touch anything. Especially the bottom.”',
+      'Tom, on the radio: “Knock knock. Nobody. That’s the whole joke. That’s this whole house.”'
+    ];
+    /* the room that gets smaller: Exploration #5, before the crawl */
+    let shrinkParts = null;
+    function startShrink() {
+      S.shrinkT = 0;
+      const { T, x0, z0 } = G, [i0, i1, j0, j1] = G.shrink;
+      const xa = x0 + i0 * T, xb = x0 + (i1 + 1) * T, zN = z0 + j0 * T, zS = z0 + (j1 + 1) * T, cN = z0 + 75 * T, cS = z0 + 80 * T;
+      const slab = (w, d) => { const m = shadowed(new THREE.Mesh(new THREE.BoxGeometry(w, 40, d), M.ashWorld)); m.position.y = 20 - .02; scene.add(m); return m; };
+      const D = cN - zN + .5;
+      const north = slab(xb - xa, D), south = slab(xb - xa, D), gate = slab(1, cS - cN);
+      north.position.set((xa + xb) / 2, north.position.y, zN - D / 2); south.position.set((xa + xb) / 2, south.position.y, zS + D / 2);
+      gate.position.set(xa - .5, -20, (cN + cS) / 2);
+      const cn = { x0: xa, x1: xb, z0: zN - D, z1: zN }, cs = { x0: xa, x1: xb, z0: zS, z1: zS + D }, cg = { x0: xa - 1, x1: xa, z0: cN, z1: cS };
+      colliders.push(cn, cs, cg);
+      shrinkParts = { north, south, gate, cn, cs, cg, zN, zS, cN, cS, D };
+      Sound.grind(true); Sound.growl(.7, [-1, 1]); shake = .8;
+      say('The way you came in is a wall.', 5000);
+      setTimeout(() => { if (S.shrinkT >= 0) say('The room is smaller than it was. It is still getting smaller.', 6000); }, 5200);
+    }
+    function shrinkStep(dt) {
+      const p = shrinkParts; S.shrinkT += dt;
+      const g = clamp(S.shrinkT / 1.5, 0, 1); p.gate.position.y = -20 + 40 * g * (2 - g);
+      const k = clamp((S.shrinkT - 1.5) / 12, 0, 1), e = k * k * (3 - 2 * k);
+      const fN = p.zN + (p.cN - p.zN) * e, fS = p.zS - (p.zS - p.cS) * e;
+      p.north.position.z = fN - p.D / 2; p.cn.z0 = fN - p.D; p.cn.z1 = fN;
+      p.south.position.z = fS + p.D / 2; p.cs.z0 = fS; p.cs.z1 = fS + p.D;
+      shadowRef.force = true; shake = Math.max(shake, .25);
+      if (k >= 1) endShrink();
+    }
+    function endShrink() {
+      const p = shrinkParts, [i0, i1, j0, j1] = G.shrink;
+      for (let i = i0; i <= i1; i++) for (let j = j0; j <= j1; j++) if (j < 75 || j > 79) setTile(i, j, 1);
+      flushChunks();
+      for (const m of [p.north, p.south, p.gate]) { scene.remove(m); m.geometry.dispose(); }
+      for (const c of [p.cn, p.cs, p.cg]) { const k = colliders.indexOf(c); if (k >= 0) colliders.splice(k, 1); }
+      shrinkParts = null; S.shrinkT = -1; S.shrunk = true; Sound.grind(false); Sound.knock();
+      setTimeout(() => say('Behind you, the way back is there again. Ahead, the passage goes on on its hands and knees.', 7000), 600);
+    }
     /* a small jump, because every first-person game should have one; and the well in the Hall, which has no bottom */
     function jump() {
       if (stair.active || P.air > 0 || P.crawl || S.falling || game.paused || game.ended) return;
@@ -1549,6 +1673,7 @@
       setTimeout(() => {
         if (!S.falling) return;
         const n = store.get('jumped', 0) + 1; store.set('jumped', n);
+        if (!found.has('well')) setTimeout(() => unlock('well'), 3200);
         S.falling = 0; P.fallV = 0; camY = 1.6;
         P.x = G.stair.x - WELL - .8; P.z = G.stair.z + 1.2; P.yaw = Math.atan2(-(G.stair.x - P.x), -(G.stair.z - P.z)); P.pitch = -.2; P.vx = P.vz = 0;
         shadowRef.force = true;
@@ -1595,16 +1720,30 @@
         finish();
       }, () => { P.x = 12.8; P.z = 8.5; P.yaw = Math.PI / 2; game.resume(); });
     }
+    const HINTS = { introduction: 'a trunk in the foyer', ch1: 'a tape in the living room', ch2: 'a tape measure in the kitchen', ch3: 'a tape in the closet that was not there', explA: 'a camera at the end of the first corridor', karen: 'a photograph on a nightstand', samples: 'a specimen bag on the kitchen table', explorations: 'a map by the well', ch4: 'a page in the first room off the corridor', ch5: 'a cache in the corridor', ch6: 'markers on the stairs', tom: 'a recorder at the lip of the well', ch7: 'a camera a hundred steps down', rescue: 'a rig at the lip of the well', ch8: 'a radio by the door that should not be there', ch9: 'tapes in the bedroom', well: 'the well itself' };
     function finish() {
       game.ended = true;
       if (document.pointerLockElement) document.exitPointerLock();
       hud.veil.hidden = true; hud.prompt.hidden = true; hud.meter.textContent = '';
       Sound.ambience(false); Sound.weather(false); Sound.groan(false);
-      card(`<p class="card-kicker">Vermont</p><p>You burned every page. Someone came into the dark with a light, and you came out together.</p><p>What you carried out is in the journal. The letters, the exhibits and the index at the back are for whoever is still reading.</p><div class="card-actions"><button type="button" data-journal>Open the journal</button><button type="button" data-again>Walk the house again</button></div>`);
+      const missed = ORDER.filter(id => HINTS[id] && !found.has(id));
+      const still = missed.length ? `<p class="card-help">Still in the house: ${missed.map(id => HINTS[id]).join('; ')}.</p>` : '<p class="card-help">You found everything the house was willing to give up.</p>';
+      card(`<p class="card-kicker">Vermont</p><p>You burned every page. Someone came into the dark with a light, and you came out together.</p><p>What you carried out is in the journal. The letters, the exhibits and the index at the back are for whoever is still reading.</p>${still}<div class="card-actions"><button type="button" data-journal>Open the journal</button><button type="button" data-again>Walk the house again</button></div>`);
       $('[data-again]', hud.card)?.addEventListener('click', () => { store.set('again', true); location.reload(); });
       $('button', hud.card)?.focus({ preventScroll: true });
     }
     if (game.ended) setTimeout(finish, 600);
+    // where you were: the house keeps its rooms and the corridor its line, so a place in either can be gone back to
+    {
+      const pos = store.get('pos', null);
+      if (pos && !game.ended && typeof pos.x === 'number' && pos.phase === (G.built ? G.phase : null) && pos.torn === S.torn && pos.collapsed === S.collapsed) {
+        const i = Math.floor((pos.x - G.x0) / G.T), j = Math.floor((pos.z - G.z0) / G.T);
+        const inHouse = pos.x < G.x0 - .2 && pos.x > .3 && pos.x < 13.7 && pos.z > .3 && pos.z < 12.7;
+        const inCorridor = G.built && pos.x > G.x0 && tileAt(i, j) === 0 && ((j >= 76 && j <= 78) || i >= G.hallStart);
+        if (inHouse || inCorridor) { P.x = pos.x; P.z = pos.z; P.yaw = pos.yaw || 0; S.resumed = true; }
+      }
+    }
+    let posT = 3;
 
     /* ---------- the look: what the lens does to the light ---------- */
 
@@ -1651,8 +1790,25 @@
     }
     const tc = s => { s = Math.max(0, Math.floor(s)); const p = n => String(n).padStart(2, '0'); return `${p(Math.floor(s / 3600))}:${p(Math.floor(s / 60) % 60)}:${p(s % 60)}`; };
 
+    // a gamepad, in the standard layout: left stick walks, right stick looks, A takes, X jumps, Y or Start opens the journal, B closes it
+    const pad = { on: false, mx: 0, mz: 0, lx: 0, ly: 0, run: false, prev: [] };
+    function pollPad() {
+      const gp = navigator.getGamepads ? [...navigator.getGamepads()].find(g => g && g.connected && g.mapping === 'standard') : null;
+      if (!gp) { pad.on = false; return; }
+      const dz = v => Math.abs(v) < .16 ? 0 : v, b = k => !!(gp.buttons[k] && gp.buttons[k].pressed), hit = k => b(k) && !pad.prev[k];
+      pad.mx = dz(gp.axes[0]); pad.mz = dz(gp.axes[1]); pad.lx = dz(gp.axes[2]); pad.ly = dz(gp.axes[3]); pad.run = b(10) || b(4);
+      if (!pad.on && (pad.mx || pad.mz || pad.lx || pad.ly || gp.buttons.some(x => x.pressed))) { pad.on = true; hud.veil.hidden = true; }
+      if (!journal.hidden) { if (hit(1) || hit(3) || hit(9)) closeJournal(); }
+      else if ($('#dark').hidden && game.started && !game.ended && !game.paused) {
+        if (hit(0) && target) interact(target);
+        if (hit(2)) jump();
+        if (hit(3) || hit(9)) openJournal(jPage.dataset.id);
+      } else if (!$('#dark').hidden && hit(0)) $('[data-act="primary"]', $('#dark'))?.click();
+      pad.prev = gp.buttons.map(x => x.pressed);
+    }
     function frame(now) {
       requestAnimationFrame(frame);
+      pollPad();
       const raw = (now - last) / 1000, dt = Math.min(.05, raw); last = now; t += dt; // the step is clamped; the frame rate is measured as it is
       fps += (1 / Math.max(raw, 1e-3) - fps) * .05;
       if (game.paused || game.ended || !loadDone) { if (idle++ < 3) render(dt); return; } // the last frame stays on the canvas while you read
@@ -1678,9 +1834,10 @@
       if (keys.has('tl')) P.yaw += dt * 1.8; if (keys.has('tr')) P.yaw -= dt * 1.8; // turning from the keyboard
       if (keys.has('pu')) P.pitch = clamp(P.pitch + dt * 1.2, -1.35, 1.35); if (keys.has('pd')) P.pitch = clamp(P.pitch - dt * 1.2, -1.35, 1.35);
       mx += stick.dx; mz += stick.dz;
+      if (pad.on) { mx += pad.mx; mz += pad.mz; P.yaw -= pad.lx * dt * 2.4; P.pitch = clamp(P.pitch - pad.ly * dt * 1.8 * (store.get('invert', false) ? -1 : 1), -1.35, 1.35); }
       if (S.falling) mx = mz = 0;
       const mag = Math.hypot(mx, mz); if (mag > 1) { mx /= mag; mz /= mag; }
-      let speed = keys.has('run') ? 3.4 : 2.1;
+      let speed = keys.has('run') || pad.run ? 3.4 : 2.1;
       if (G.low && P.x > G.x0 + G.low[0] * G.T && P.x < G.x0 + G.low[1] * G.T) speed *= .5; // on your hands and knees
       if (stair.active) speed *= .85 * clamp(Math.hypot(P.x - G.stair.x, P.z - G.stair.z) / 1.7, .45, 1); // the turn is tighter near the column
 
@@ -1728,7 +1885,7 @@
         if (depth > 52 && !S.saidBottom) { S.saidBottom = true; say('There is nothing below that you need. Everything you came for is above you.', 8000); }
         while (stair.beat < STAIR_BEATS.length && depth >= STAIR_BEATS[stair.beat][0]) { const [, text, fx] = STAIR_BEATS[stair.beat++]; say(text); if (fx === 'growl') { Sound.growl(); shake = 1; torchDip = 1; } }
         if (depth > 20 && Math.random() < dt / 40) { Sound.growl(.6); shake = .6; torchDip = .7; }
-        hud.meter.textContent = `Down: ${fmt(depth * FT)} ft. Steps: ${fmt(depth / RISE)}.`;
+        hud.meter.textContent = `Down: ${fmt(depth * FT)} ft. Steps: ${fmt(depth / RISE)}. ${Math.round(temperature())}°F.`;
         placeSteps();
       } else {
         collide();
@@ -1767,7 +1924,7 @@
       if (reg === 'maze' || reg === 'hall') {
         P.lineOut = Math.max(P.lineOut, P.x - G.x0);
         const out = (P.x - G.x0) * FT;
-        hud.meter.textContent = reg === 'hall' ? (S.quarterAt ? `The Great Hall. The quarter has been falling for ${fmt(t - S.quarterAt)} s.` : 'The Great Hall.') : G.phase === 'empty' ? `${fmt(out)} ft. No line.` : `Line paid out: ${fmt(out)} ft.`;
+        hud.meter.textContent = (reg === 'hall' ? (S.quarterAt ? `The Great Hall. The quarter has been falling for ${fmt(t - S.quarterAt)} s.` : 'The Great Hall.') : G.phase === 'empty' ? `${fmt(out)} ft. No line.` : `Line paid out: ${fmt(out)} ft.`) + ` ${Math.round(temperature())}°F.`;
         if (G.phase === 'long') while (sayBeat < HALL_BEATS.length && (P.x - G.x0) >= HALL_BEATS[sayBeat][0]) {
           const [, text, fx] = HALL_BEATS[sayBeat++]; say(text);
           if (fx === 'growl') { Sound.growl(); shake = 1; torchDip = 1; }
@@ -1775,6 +1932,29 @@
         }
         if (G.phase === 'empty') while (emptyBeat < EMPTY_BEATS.length && (P.x - G.x0) >= EMPTY_BEATS[emptyBeat][0]) say(EMPTY_BEATS[emptyBeat++][1], 6000);
         if (G.phase === 'a') explorationA();
+        // the children, the first time: calling from much farther away than the yard goes
+        if (G.phase === 'a' && !S.kids && P.x - G.x0 > 5) { S.kids = 1; Sound.voice({ pitch: 300, dur: 1.4, far: .95, pan: -.2, level: .55 }); Sound.voice({ pitch: 270, dur: 1.1, far: 1, pan: .25, level: .5, at: 2.2 }); setTimeout(() => say('Daisy’s voice, from much farther off than the yard goes. Then Chad’s, farther.', 7000), 900); }
+        // Tom on the radio, while his lantern is lit
+        if (reg === 'hall' && relayLantern && relayLantern.visible && !found.has('tom')) {
+          const d = Math.hypot(P.x - relaySrc.pos.x, P.z - relaySrc.pos.z);
+          S.radioT -= dt;
+          if (S.radioT <= 0 && d < 34) {
+            S.radioT = 14 + Math.random() * 10;
+            Sound.voice({ pitch: 128, dur: 2.5 + Math.random() * 2, radio: true, pan: panTo(relaySrc.pos.x, relaySrc.pos.z), level: .55 * clamp(1.3 - d / 30, .15, 1) });
+            if (S.joke < TOM_JOKES.length && d < 16) setTimeout(() => say(TOM_JOKES[S.joke++], 7000), 700);
+          }
+        }
+        if (reg === 'hall' && Math.random() < dt / 110) Sound.growl(.2, [panTo(G.stair.x, G.stair.z) * .5, panTo(G.stair.x, G.stair.z) * .5]); // from the well, and nowhere else
+        // a side corridor that is the same corridor however far you walk it, until you turn round
+        if (G.loop && !stair.active) {
+          const i = Math.floor((P.x - G.x0) / G.T), j = Math.floor((P.z - G.z0) / G.T), fz = -Math.cos(P.yaw);
+          if (i >= G.loop[0] && i <= G.loop[1]) {
+            if (j < 40 && fz < -.3) { P.z += 20 * G.T; S.loops++; shadowRef.force = true; if (S.loops === 3) say('This corridor is not getting any shorter.', 6000); if (S.loops === 6) say('You have walked this stretch before. More than once.', 6000); }
+            if (S.loops >= 2 && fz > .5 && !S.letGo) { S.letGo = true; say('You turn round. The way out is closer than it should be.', 6000); }
+          }
+        }
+        // the room that gets smaller
+        if (G.shrink && !S.shrunk && S.shrinkT < 0) { const i = (P.x - G.x0) / G.T, j = (P.z - G.z0) / G.T; if (i > 90 && i < 95 && j > 70 && j < 85) startShrink(); }
         if (G.ante && !S.saidAnte) { const i = (P.x - G.x0) / G.T; if (i > G.ante[0] && i < G.ante[1]) { S.saidAnte = true; say('A room with a doorway on every side. All of them go in. None of them go back.', 7000); } }
         if ((G.phase === 'long' || G.phase === 'short') && !stair.active) driftWalls(dt);
         if (S.torn && (P.x - G.x0) > 2 && Math.random() < dt / 30) { Sound.growl(.5); shake = .5; torchDip = .6; }
@@ -1787,8 +1967,10 @@
         if (S.doorAjar && P.z > 14 && !S.farOut && Math.hypot(P.x - 7, P.z - 6.5) > 24) { S.farOut = true; say('The house is behind you. So is everything in it.', 7000); }
       }
       if (S.collapseT >= 0) collapseStep(dt);
+      posT -= dt; if (posT <= 0) { posT = 3; if (!stair.active && !S.falling && S.collapseT < 0 && S.shrinkT < 0 && !Match.running && (reg === 'house' || reg === 'maze' || reg === 'hall')) store.set('pos', { x: +P.x.toFixed(2), z: +P.z.toFixed(2), yaw: +P.yaw.toFixed(2), phase: G.built ? G.phase : null, torn: S.torn, collapsed: S.collapsed }); }
+      if (S.shrinkT >= 0 && shrinkParts) shrinkStep(dt);
       if (S.doorAjar && frontDoor.userData.swing < 1) { const sw = frontDoor.userData.swing = Math.min(1, frontDoor.userData.swing + dt * .7); frontDoor.rotation.y = -1.9 * sw * sw * (3 - 2 * sw); }
-      Sound.ambience(reg !== 'house' || S.torn, reg === 'house' ? .08 : reg === 'stair' ? .22 : .16);
+      Sound.ambience(reg !== 'house' || S.torn, reg === 'house' ? .08 : reg === 'stair' ? .22 : reg === 'hall' ? .05 : .16); // the Hall is almost silent
       Sound.weather(reg === 'house' && !S.torn);
       Sound.groan(reg === 'house' && S.torn);
       fogTarget = reg === 'house' ? (S.torn ? .1 : .045) : reg === 'maze' ? .085 : reg === 'hall' ? .05 : .075;
@@ -1821,7 +2003,7 @@
       const cold = P.region !== 'house' || S.torn;
       breathTimer -= dt;
       if (cold && breathTimer <= 0 && !reduced) {
-        breathTimer = 3.2 + Math.random() * 2.2;
+        breathTimer = clamp(3.2 - (32 - temperature()) * .08, 1.3, 3.2) + Math.random() * 1.6; // the colder, the more often
         const b = breaths.find(b => b.age > 2.4); if (b) {
           camera.getWorldDirection(breathDir);
           breathPos.copy(camera.position).addScaledVector(breathDir, .45); breathPos.y -= .14;
@@ -1887,13 +2069,13 @@
       if (game.ended) return; // the end card is already up
       setTimeout(() => Sound.play('door_close', { gain: .8, rate: .9 }), 1400);
       setTimeout(() => {
-        card(`<p class="card-kicker">Ash Tree Lane</p><p>The house is empty. Whatever they left is still inside.</p><p class="card-help">${touch ? 'Drag on the left to walk, on the right to look. Tap what you find.' : 'Click to look around. Walk with WASD or ZQSD, turn with the arrow keys, Space to jump. Press E for what you find, J for the journal, I to invert the mouse.'}</p>`, 9000);
+        card(`<p class="card-kicker">Ash Tree Lane</p><p>The house is empty. Whatever they left is still inside.</p><p class="card-help">${touch ? 'Drag on the left to walk, on the right to look. Tap what you find.' : 'Click to look around. Walk with WASD or ZQSD, turn with the arrow keys, Space to jump. Press E for what you find, J for the journal, I to invert the mouse. A gamepad works too.'}</p>`, 9000);
       }, 400);
-      if (found.size > 2 && !game.ended) setTimeout(() => say('You have been here before. What you found is still in the journal.', 6000), 10000);
+      if (found.size > 2 && !game.ended) setTimeout(() => say(S.resumed ? 'You are where you left off. The house remembers too.' : 'You have been here before. What you found is still in the journal.', 6000), S.resumed ? 3000 : 10000);
     }
 
     // for tests and the curious
-    window.ATL = { P, S, G, stair, stairTo, colliders, statics, baked, sources, pool, regrow: (phase, L) => { buildMaze(phase, L); placeMazePickups(); }, jump, air: () => P.air, setTile, flushChunks, driftWalls, startCollapse, tileAt, camY: () => camY, paused: () => game.paused, near: () => pickups.filter(p => Math.hypot(p.position.x - P.x, p.position.z - P.z) < 3).map(p => p.userData.id + '@' + Math.hypot(p.position.x - P.x, p.position.z - P.z).toFixed(2)), yawTo: (dx, dz) => Math.atan2(-dx, -dz), models, fps: () => Math.round(fps), loaded: () => loadDone, teleport(x, z, yaw = P.yaw) { P.x = x; P.z = z; P.yaw = yaw; P.vx = P.vz = 0; }, look(yaw, pitch = 0) { P.yaw = yaw; P.pitch = pitch; }, target: () => target?.userData.id, interact: () => target && interact(target), found, unlock, keys, renderer, scene };
+    window.ATL = { P, S, G, stair, stairTo, colliders, statics, baked, sources, pool, regrow: (phase, L) => { buildMaze(phase, L); placeMazePickups(); }, jump, air: () => P.air, temperature, startShrink, setTile, flushChunks, driftWalls, startCollapse, tileAt, camY: () => camY, paused: () => game.paused, near: () => pickups.filter(p => Math.hypot(p.position.x - P.x, p.position.z - P.z) < 3).map(p => p.userData.id + '@' + Math.hypot(p.position.x - P.x, p.position.z - P.z).toFixed(2)), yawTo: (dx, dz) => Math.atan2(-dx, -dz), models, fps: () => Math.round(fps), loaded: () => loadDone, teleport(x, z, yaw = P.yaw) { P.x = x; P.z = z; P.yaw = yaw; P.vx = P.vz = 0; }, look(yaw, pitch = 0) { P.yaw = yaw; P.pitch = pitch; }, target: () => target?.userData.id, interact: () => target && interact(target), found, unlock, keys, renderer, scene };
   }
 
   /* ================================================================
@@ -1930,8 +2112,9 @@
       if (cur && pages.length < 7) pages.push({ html: cur });
       return pages;
     }
-    const m = { pages: bookPages(), i: 0, light: .5, state: 'reading', clock: 0, fi: 0, fin: 0, rect: null, warned: false };
-    const FINALE = [[0, 'No more pages.'], [3.4, 'Nothing under you. Nothing above.'], [7.2, 'Nothing, for a long time.'], [11.6, 'Then, very far off, a light that is not yours.'], [16.8, 'Karen.']];
+    const m = { pages: bookPages(), i: 0, light: .5, state: 'reading', clock: 0, fi: 0, fin: 0, white: 0, called: false, called2: false, swelled: false, rect: null, warned: false };
+    const FINALE = [[0, 'No more pages.'], [3.4, 'Nothing under you. Nothing above.'], [7.2, 'Nothing, for a long time.'], [11.6, 'Then, very far off, a light that is not yours.'], [16.4, 'It is coming toward you. It is not in a hurry.'], [20.6, 'Someone is saying your name. She has never been in here before. She came anyway.'], [25.4, 'Karen.'], [29, 'The house lets go.']];
+    const ARRIVE = 11.6, LETGO = 29, END = 34;
     function showPage(pg, n, total) {
       page.className = 'dark-page' + (pg.title ? ' title-page' : '');
       page.innerHTML = pg.html + (pg.title ? '' : `<p class="page-foot">${n}</p>`);
@@ -1977,8 +2160,11 @@
       else if (m.state === 'finale') {
         m.light = Math.max(0, m.light - dtRaw * .5); m.clock += dtRaw;
         while (m.fi < FINALE.length && m.clock >= FINALE[m.fi][0]) { const p = document.createElement('p'); p.textContent = FINALE[m.fi][1]; p.style.left = '50%'; p.style.top = '46%'; for (const old of $$('p:not(.dying)', words)) { old.classList.add('dying'); old.classList.remove('in'); setTimeout(() => old.remove(), 2000); } words.append(p); requestAnimationFrame(() => requestAnimationFrame(() => p.classList.add('in'))); live.textContent = FINALE[m.fi][1]; m.fi++; }
-        if (m.clock > 11.6) m.fin = Math.min(1, (m.clock - 11.6) / 8);
-        if (m.fin >= 1) end(true);
+        m.fin = clamp((m.clock - ARRIVE) / (LETGO - ARRIVE), 0, 1); m.white = clamp((m.clock - LETGO) / (END - LETGO - 1), 0, 1);
+        if (!m.called && m.clock > 20.6) { m.called = true; Sound.voice({ pitch: 215, dur: .9, far: .8, level: .6 }); }
+        if (!m.called2 && m.clock > 25.4) { m.called2 = true; Sound.voice({ pitch: 210, dur: 1.1, level: .7 }); }
+        if (!m.swelled && m.clock > LETGO - .5) { m.swelled = true; Sound.swell(4.5); Sound.ambience(false); }
+        if (m.clock >= END) end(true);
       }
       meter.textContent = m.state === 'finale' ? '' : `Pages left: ${m.pages.length - m.i}`;
       const c = ctx; c.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -1993,11 +2179,16 @@
       }
       if (m.state === 'burning') drawFlame(c, gx, gy + 6, tt, 1.2); else if (m.state === 'reading' && L > .05) drawFlame(c, gx, gy + 6, tt, .35 * L);
       if (m.state === 'finale' && m.fin > 0) {
-        const e = m.fin * m.fin, g = c.createRadialGradient(w / 2, h * .3, 0, w / 2, h * .3, Math.max(w, h) * (.05 + e * 1.2));
-        g.addColorStop(0, `rgba(255, 244, 222, ${(.25 + .75 * e).toFixed(3)})`); g.addColorStop(1, 'rgba(255, 244, 222, 0)');
+        // a light, far off, coming closer: it sways the way a light carried by someone walking sways
+        const e = m.fin * m.fin, sway = Math.sin(tt * 2.1) * (6 + 30 * e) + Math.sin(tt * .7) * 12 * (1 - e);
+        const lx = w / 2 + sway, ly = h * (.34 + .1 * e) + Math.abs(Math.sin(tt * 4.2)) * 4 * e, rad = Math.max(w, h) * (.012 + e * .7);
+        const g = c.createRadialGradient(lx, ly, 0, lx, ly, rad);
+        g.addColorStop(0, `rgba(255, 248, 232, ${(.55 + .45 * e).toFixed(3)})`); g.addColorStop(.18, `rgba(255, 228, 190, ${(.28 + .5 * e).toFixed(3)})`); g.addColorStop(1, 'rgba(255, 228, 190, 0)');
         c.fillStyle = g; c.fillRect(0, 0, w, h);
-        if (e > .7) { c.fillStyle = `rgba(246, 246, 243, ${((e - .7) / .3).toFixed(3)})`; c.fillRect(0, 0, w, h); }
+        c.fillStyle = `rgba(255, 252, 244, ${(.6 + .4 * e).toFixed(3)})`; c.beginPath(); c.arc(lx, ly, 1.5 + 5 * e, 0, Math.PI * 2); c.fill(); // the lamp itself
+        if (e > .35) { const b = (e - .35) / .65; c.fillStyle = `rgba(255, 244, 222, ${(.05 * b).toFixed(3)})`; c.fillRect(0, 0, w, h); } // it starts to reach you
       }
+      if (m.state === 'finale' && m.white > 0) { const q = m.white * m.white; c.fillStyle = `rgba(246, 246, 243, ${q.toFixed(3)})`; c.fillRect(0, 0, w, h); } // the house letting go
       page.style.setProperty('--light', clamp(L, .05, 1).toFixed(3));
     }
     // wire the room

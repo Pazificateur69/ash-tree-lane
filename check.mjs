@@ -43,7 +43,7 @@ for (const [, path] of html.matchAll(/"(\.\/vendor\/[^"]+\.js)"/g)) ok(existsSyn
 // everything the house can unlock is a page of the book
 for (const [, id] of js.matchAll(/(?:unlock\('|chapter: ')([\w]+)'/g)) ok(html.includes(`id="${id}"`), `unlock('${id}') has no page`);
 const ORDER = (js.match(/const ORDER = \[([^\]]+)\]/)?.[1] ?? '').split(',').map(s => s.trim().replace(/'/g, '')).filter(Boolean);
-ok(ORDER.length === 24, `journal order has ${ORDER.length} pages`);
+ok(ORDER.length === 25, `journal order has ${ORDER.length} pages`);
 for (const id of ORDER) ok(new RegExp(`id="${id}" data-title="`).test(html), `${id} has no data-title`);
 for (const [, id] of html.matchAll(/href="#([\w-]+)"/g)) ok(html.includes(`id="${id}"`), `#${id} has no target`);
 
