@@ -1954,7 +1954,8 @@
       if (u.door === 'front') {
         if (game.ended) { finish(); return; }
         if (S.doorOpen) { openFrontDoor(p); return; }
-        say(found.has('ch1') ? 'The door does not open. You came in; the house decides when you go.' : 'It closed behind you. It does not open from this side.');
+        say(!found.has('ch1') ? 'It closed behind you. It does not open from this side.' : S.torn && !found.has('rescue') ? 'The door does not open. Not while someone is still down there.' : 'The door does not open. You came in; the house decides when you go.');
+        const h = nextHint(); if (h) setTimeout(() => say(h, 8000), 2600); // and where to go instead
         return;
       }
       if (u.quarter) { dropQuarter(p); return; }
@@ -2383,7 +2384,7 @@
       if (!found.has('explA')) return 'Follow the corridor to the room at its end. He set his camera down on the floor.';
       if (S.fleeing && !S.torn) return 'Go back up. Walk off the top step, onto the floor of the Hall.';
       if (!found.has('ch7')) return 'The corridor ends in a hall, and the stairs are in the middle of it. A camera is a hundred steps down.';
-      if (!found.has('rescue')) return 'Tom rigged a tripod at the lip of the well. It is still there.';
+      if (!found.has('rescue')) return 'Back through the short corridor to the Great Hall: Tom rigged a tripod and a rope at the lip of the well. It is still there.';
       if (S.collapsePending) return 'Go home. Something is waiting in the living room.';
       if (S.collapseT >= 0) return 'The front door. It opens outward now.';
       if (!found.has('ch8')) return 'Tom’s radio is in the living room, by the door that should not be there.';
@@ -2659,7 +2660,7 @@
       if (stair.active) stats.deep = Math.max(stats.deep, stair.depth() * FT);
       stats.line = Math.max(stats.line, P.lineOut * FT);
       const sig = found.size + G.phase + S.torn + S.collapsed + S.measuredIn + S.karen + S.vermont + S.fleeing + (measurePickups ? 1 : 0);
-      if (sig !== hintSig) { hintSig = sig; hintT = 0; } else if (!Match.running) { hintT += dt; if (hintT > 180) { hintT = 60; const h = nextHint(); if (h) say(h, 8000); } }
+      if (sig !== hintSig) { hintSig = sig; hintT = 0; } else if (!Match.running) { hintT += dt; if (hintT > 120) { hintT = 30; const h = nextHint(); if (h) say(h, 8000); } }
       posT -= dt; if (posT <= 0) { posT = 3; saveStats(); if (!stair.active && !S.falling && S.collapseT < 0 && S.shrinkT < 0 && !Match.running && (reg === 'house' || reg === 'maze' || reg === 'hall')) store.set('pos', { x: +P.x.toFixed(2), z: +P.z.toFixed(2), yaw: +P.yaw.toFixed(2), phase: G.built ? G.phase : null, torn: S.torn, collapsed: S.collapsed }); }
       if (S.shrinkT >= 0 && shrinkParts) shrinkStep(dt);
       if (S.doorAjar && frontDoor.userData.swing < 1) { const sw = frontDoor.userData.swing = Math.min(1, frontDoor.userData.swing + dt * .7); frontDoor.rotation.y = -1.9 * sw * sw * (3 - 2 * sw); }
