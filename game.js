@@ -1483,6 +1483,8 @@
       }
     }
     // Delial, face down
+    // the east wall of the living room, where the tape already shows a door: it answers, so nobody takes it for a door that is stuck
+    const eastWall = pickup('east_wall', 13.9, 1.1, 8.5, g => { const m = add(g, mesh(new THREE.PlaneGeometry(1.1, 1.9), new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }))); m.rotation.y = -Math.PI / 2; }, { label: 'The east wall of the living room.', wall: true });
     pickup('delial', 11.2, .421, 7.72, g => { add(g, mesh(new THREE.BoxGeometry(.13, .003, .1), M.white), 0, .0015, 0).rotation.y = .5; }, { label: 'A photograph, face down. On the back, in pencil: Delial.', say: 'You do not turn it over. Navidson never could either.', keep: true, reach: 1.8 });
     // the second visit: a door that was not here last time
     if (store.get('endings', 0) > 0) pickup('new_door', 6.09, 1.02, 9.7, g => { add(g, mesh(new THREE.BoxGeometry(.05, 2.04, .9), M.wood), 0, 0, 0); add(g, mesh(new THREE.SphereGeometry(.03, 10, 8), M.brass), .05, -.02, .35); }, { label: 'A door. It was not here last time.', say: 'It opens onto the wall behind it. Plaster, then brick, then nothing you can get a fingernail into.', keep: true, reach: 1.8 });
@@ -1739,6 +1741,7 @@
     }
     function openHallway(silent) {
       if (S.hallway) return; S.hallway = true;
+      if (eastWall.parent) { scene.remove(eastWall); dropPickup(eastWall); }
       hallwayPlug.open();
       buildMaze(mazePhase()); placeMazePickups();
       for (let k = 0; k < 11; k++) { const f = k / 10, p = new THREE.Mesh(new THREE.CircleGeometry(.035, 8), M.pawprint); p.rotation.x = -Math.PI / 2; p.scale.y = 1.35; p.position.set(10.4 + f * 3.3 + (k % 2 ? .06 : -.06), .006, 9.6 - f * 1.05); scene.add(p); stat(p); } // prints, going in
@@ -1817,9 +1820,12 @@
       const gx = G.x0 + 56; karenGlow.position.set(gx, .2, G.z0 + 77.5 * G.T); karenSrc.pos.set(gx, .35, G.z0 + 77.5 * G.T); karenSrc.intensity = 2.4; karenGlow.visible = true;
       Sound.pant(true);
       if (!resumed) card('<p class="card-kicker">Karen</p><p>She is afraid of the dark, and of small rooms. She has not been inside since the house closed. She goes in anyway.</p><p class="card-help">Her lamp is small. Find him.</p>', 9000);
-      setTimeout(() => say('The front door is open. It opens outward now.', 6000), resumed ? 1500 : 9500);
+      setTimeout(() => say('The front door is open, in front of her. The hallway is at the far end of the living room.', 7000), resumed ? 1500 : 9500);
+      if (!karenDoor) karenDoor = source(13.5, 1.1, 8.5, 0xff9448, 0, 5); karenDoor.intensity = 1.1; // a little of that light reaches the hallway's door
     }
+    var karenDoor; // a declaration: a resumed Karen starts before this line runs
     function karenStep(dt) {
+      if (P.region === 'house' && (karenCall -= dt) <= 0) { karenCall = 11 + Math.random() * 4; Sound.voice({ pitch: 118, dur: .8, level: .35, far: .9, pos: [16, 1.4, 8.5] }); if (!S.kCalled) { S.kCalled = true; say('A voice, from the living room. From past it. Her name.', 5000); } }
       if (P.vx > .2 && P.x > G.x0) P.x += P.vx * dt * 1.25; // every step she takes, the corridor gives up a little more
       const k = (P.x - G.x0) / 56;
       karenCall -= dt;
@@ -1906,7 +1912,7 @@
     }
     function enterVermont(resumed) {
       buildVermont();
-      S.vermont = true; S.karen = false; if (karenGlow) { karenGlow.visible = false; karenSrc.intensity = 0; }
+      S.vermont = true; S.karen = false; if (karenGlow) { karenGlow.visible = false; karenSrc.intensity = 0; } if (karenDoor) karenDoor.intensity = 0;
       Sound.pant(false); Sound.ambience(false); Sound.weather(false); Sound.groan(false);
       if (!S.vwind) S.vwind = Sound.loop('wind', .1, 4);
       P.x = VX - 1.6; P.z = VZ + 1.3; P.yaw = Math.atan2(-(VX + .4 - P.x), -(VZ - 2.5 - P.z)); P.pitch = 0; P.vx = P.vz = 0; camY = 1.6; shadowRef.force = true;
@@ -1951,6 +1957,11 @@
     function interact(p) {
       const u = p.userData;
       Sound.init(); Sound.resume();
+      if (u.wall) { // not a door, not yet
+        say(S.tapeDoor ? 'Plaster. Knock and it sounds like a wall, with the yard behind it. On the tape there is a door here. The house has not made it yet.' : 'Plaster, and behind it the yard. Just a wall.', 7000);
+        const h = nextHint(); if (h) setTimeout(() => say(h, 8000), 4000);
+        return;
+      }
       if (u.door === 'front') {
         if (game.ended) { finish(); return; }
         if (S.doorOpen) { openFrontDoor(p); return; }
@@ -2377,7 +2388,7 @@
     let hintT = 0, hintSig = '';
     function nextHint() {
       if (S.vermont) return 'The tapes are on the table.';
-      if (S.karen) return 'Keep walking. The corridor is shorter than it looks, and the light is at the end of it.';
+      if (S.karen) return P.region !== 'house' ? 'Keep walking east. The corridor is shorter than it looks, and the light is at the end of it.' : P.z > 13 || P.z < 0 || P.x < 0 ? 'The front door is open, right in front of you: the house. Go in, and east from the hall to the living room.' : 'Across the living room, to the door in its east wall. The light is at the end of the corridor behind it.';
       if (!found.has('ch1')) return 'There is a tape on the moving boxes in the living room, by the lamp.';
       if (!found.has('ch2')) return S.measuredIn ? 'The children’s window. Measure the same wall from the outside.' : measurePickups ? 'The pencil mark at the east end of the hall. Measure from there.' : 'The tape measure is on the kitchen counter.';
       if (!found.has('ch3')) return 'The closet between the bedrooms. Something is on its floor.';
