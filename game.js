@@ -1619,11 +1619,14 @@
       }
     }
     let tornPickups = false;
+    const afterTom = []; // what the house leaves behind once it has closed: not before
+    function afterTomPick(p) { afterTom.push(p); p.visible = !!S.collapsed; return p; }
+    function showAfterTom() { for (const p of afterTom) p.visible = true; }
     function placeTornPickups() {
       if (tornPickups) return; tornPickups = true;
       const put = p => { if (found.has(p.userData.chapter)) { scene.remove(p); dropPickup(p); } };
-      put(pickup('radio', 12.6, 0, 8.4, g => { const r = model('radio', { size: .23 }); scene.remove(r); r.position.set(0, 0, 0); r.rotation.y = -.6; g.add(r); add(g, mesh(new THREE.BoxGeometry(.012, .012, .012), M.led), .06, .12, .11); }, { label: 'Tom’s radio. It is still on.', chapter: 'ch8', reach: 2.4 }));
-      put(pickup('karen_tapes', 5.92, .345, .46, g => { for (let k = 0; k < 3; k++) add(g, mesh(new THREE.BoxGeometry(.19, .025, .1), M.tape), 0, .0125 + k * .027, 0).rotation.y = (k - 1) * .15; add(g, mesh(new THREE.PlaneGeometry(.13, .05), M.labelKaren), 0, .082, 0).rotation.set(-Math.PI / 2, 0, .3); }, { label: 'VHS tapes, labeled in Karen’s hand: WHAT SOME HAVE THOUGHT.', chapter: 'ch9' }));
+      put(afterTomPick(pickup('radio', 12.6, 0, 8.4, g => { const r = model('radio', { size: .23 }); scene.remove(r); r.position.set(0, 0, 0); r.rotation.y = -.6; g.add(r); add(g, mesh(new THREE.BoxGeometry(.012, .012, .012), M.led), .06, .12, .11); }, { label: 'Tom’s radio. It is still on.', chapter: 'ch8', reach: 2.4 })));
+      put(afterTomPick(pickup('karen_tapes', 5.92, .345, .46, g => { for (let k = 0; k < 3; k++) add(g, mesh(new THREE.BoxGeometry(.19, .025, .1), M.tape), 0, .0125 + k * .027, 0).rotation.y = (k - 1) * .15; add(g, mesh(new THREE.PlaneGeometry(.13, .05), M.labelKaren), 0, .082, 0).rotation.set(-Math.PI / 2, 0, .3); }, { label: 'VHS tapes, labeled in Karen’s hand: WHAT SOME HAVE THOUGHT.', chapter: 'ch9' })));
       // the rigging Tom built at the top of the stairs, for the wounded
       put(pickup('rig', G.stair.x + 3.7, 0, G.stair.z, g => {
         for (let k = 0; k < 3; k++) { const a = k * Math.PI * 2 / 3; const leg = add(g, mesh(new THREE.CylinderGeometry(.03, .035, 2.2, 8), M.wood), Math.cos(a) * .5, 1.05, Math.sin(a) * .5); leg.rotation.set(Math.sin(a) * .42, 0, -Math.cos(a) * .42); }
@@ -1810,6 +1813,7 @@
     let karenGlow = null, karenSrc = null, karenCall = 6;
     function startKaren(resumed) {
       S.karen = true; S.vermont = false; S.karenDone = false;
+      S.doorOpen = true; openFrontDoor(frontDoor, true); // whatever happened before, she finds it open
       S.regrow = null; S.regrowText = null; // nothing else is going to rebuild the hallway now
       if (G.built && G.phase !== 'karen') { buildMaze('karen'); placeMazePickups(); }
       P.x = 2.5; P.z = 15.6; P.yaw = 0; P.pitch = 0; P.vx = P.vz = 0; camY = 1.6;
@@ -2196,7 +2200,7 @@
       if (S.collapseT > 30 || (outside && S.collapseT > 6)) endCollapse(outside);
     }
     function endCollapse(outside) {
-      S.collapseT = -1; S.collapsed = true;
+      S.collapseT = -1; S.collapsed = true; showAfterTom();
       houseCeiling.position.y = (S.torn ? H + .6 : H) - .9; lean().ceiling();
       for (const l of lamps) if (l.hung) for (const [o] of l.parts) if (o !== l.bulb) stat(o);
       lean().end();
@@ -2204,7 +2208,7 @@
       setTimeout(() => { if (!found.has('collapse')) unlock('collapse'); }, 6500);
     }
     function applyCollapsed() { // a house reopened after it closed
-      if (S.collapsed) return; S.collapsed = true; S.doorOpen = true;
+      if (S.collapsed) return; S.collapsed = true; S.doorOpen = true; showAfterTom();
       if (!found.has('collapse')) unlock('collapse', false); // reopened in the middle of it: what happened is in the journal
       lean().close(true);
       houseCeiling.position.y = (S.torn ? H + .6 : H) - .9; lean().ceiling(); bakeStatics();
