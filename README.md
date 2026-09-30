@@ -8,6 +8,8 @@ You arrive at night in the empty house on Ash Tree Lane with a flashlight and a 
 
 This is a tribute made by a reader. It is not the book, it contains none of the book's text, and nothing here replaces reading it.
 
+Made by **Al694** (Pazificateur). Contact: ashtreelanehouse@gmail.com, or u/Al694__ on Reddit.
+
 ---
 
 ## What it is for
@@ -97,7 +99,7 @@ The journal is the book side of the project: a retelling of the novel in new wor
 
 **Testing.** `node check.mjs` verifies the things that break silently when the text is edited: note numbers in order, every reference has its note, the cipher still spells its sentence, every page is in the journal's order, every texture and model the script asks for exists, and no em dashes anywhere. `node tools/walk.mjs` plays the whole walk (every room, the hallway, the Hall, the stairs, the torn house, the last pages, the ending) in headless Chromium and screenshots each scene; `node tools/resume.mjs` opens the house with saved progress at every stage of the story and checks that it comes back as it was; `node tools/stairs.mjs` walks the staircase; `node tools/doors.mjs` walks through every door that once stuck and reopens a finished house. `node tools/a11y.mjs` checks that the book reads without script, that the journal and its leaves are modal, that the arrows turn, and that a browser without WebGL is sent back to the threshold.
 
-**Tools.** Written and built with the help of Claude (Anthropic), used as a coding and writing partner; every scene was checked by hand.
+**Credits.** Ash Tree Lane is a project by Al694 (Pazificateur): the idea, the direction, which parts of the book go in and how they should feel, the playtesting, and every fix that came out of the Reddit thread. Built with AI-assisted coding (Claude).
 
 ## Files
 
