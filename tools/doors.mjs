@@ -51,7 +51,7 @@ check('torn: living room, down the west side', ...(r => [r.ok, r])(await walk(7.
 check('torn: living room, out through the foyer door', ...(r => [r.ok, r])(await walk(7.2, 11.5, W, () => ATL.P.x < 5.6, 60000)));
 check('torn: living room, into the kitchen', ...(r => [r.ok, r])(await walk(7.2, 7.6, W, () => ATL.P.x < 5.5, 60000)));
 // Exploration #5: the crawlspace can be crawled through
-await page.evaluate(() => { for (const id of ['ch8', 'ch9']) ATL.unlock(id, false); ATL.teleport(3, 12, 0); });
+await page.evaluate(() => { ATL.found.add('rescue'); for (const id of ['ch8', 'ch9']) ATL.unlock(id, false); ATL.teleport(3, 12, 0); }); // Karen's tapes come after Tom's rescue
 await page.waitForFunction(() => ATL.G.phase === 'empty', null, { timeout: 20000 });
 const low = await page.evaluate(() => ({ x0: ATL.G.x0, T: ATL.G.T, a: ATL.G.low[0], b: ATL.G.low[1] }));
 check('crawlspace: in through its mouth', ...(r => [r.ok, r])(await walk(low.x0 + (low.a - 3) * low.T, 8.75, E, () => ATL.P.x > ATL.G.x0 + (ATL.G.low[0] + 3) * ATL.G.T, 90000)));
