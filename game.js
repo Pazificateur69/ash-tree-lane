@@ -685,6 +685,7 @@
     const p = hud.settings; if (!p) return;
     p.querySelector('[name=sens]').value = SET.sens; p.querySelector('[name=fov]').value = SET.fov; p.querySelector('[name=vol]').value = SET.vol;
     p.querySelector('[name=sub]').value = SET.sub; p.querySelector('[name=calm]').checked = SET.calm; p.querySelector('[name=fps]').checked = SET.fps; p.querySelector('[name=invert]').checked = store.get('invert', false);
+    const skip = p.querySelector('[data-skip]'); if (skip) skip.hidden = !(store.get('endings', 0) > 0 && !found.has('ch3')); // a second walk need not start from the tapes
     p.hidden = false; game.pause(); p.querySelector('[name=sens]').focus({ preventScroll: true });
   }
   function closeSettings() { hud.settings.hidden = true; hud.setBtn.focus({ preventScroll: true }); game.resume(); }
@@ -695,6 +696,7 @@
       saveSet(); applySettings();
     });
     hud.settings.querySelector('[data-settings-close]').addEventListener('click', closeSettings);
+    hud.settings.querySelector('[data-skip]')?.addEventListener('click', () => { for (const id of ['ch1', 'ch2', 'ch3']) unlock(id, false); closeSettings(); say('The first tapes are already in your journal. The closet is open, and so is the hallway.', 6000); });
     hud.setBtn.addEventListener('click', openSettings);
   }
   applySettings();
@@ -1736,7 +1738,7 @@
     /* ---------- story wiring ---------- */
 
     const S = { closet: false, hallway: false, torn: false, fleeing: false, explore5: false, arrived: false, grewA: false, turnA: false, regrow: null, regrowText: null, collapsePending: false, collapseT: -1, collapsed: false, doorOpen: false, doorAjar: false, quarterAt: 0, stairShort: false, saidDoor: false, saidAnte: false, farOut: false, saidCam: false, saidBottom: false, falling: 0, gone: 0, clocked: false, measuredIn: false, remeasured: false, pets: false, hollEnd: false, breathN: 0, breath: null, shape: false, kids: 0, radioT: 20, joke: 0, loops: 0, letGo: false, shrinkT: -1, shrunk: false, far: 0 };
-    const mazePhase = () => found.has('ch10') && !found.has('ch11') ? 'karen' : found.has('ch9') ? 'empty' : found.has('ch7') ? 'short' : found.has('explA') ? 'long' : 'a';
+    const mazePhase = () => found.has('ch10') && !found.has('ch11') ? 'karen' : found.has('ch9') && found.has('rescue') ? 'empty' : found.has('ch7') ? 'short' : found.has('explA') ? 'long' : 'a';
     function openCloset(silent) {
       if (S.closet) return; S.closet = true;
       closetPlug.open(); shadowRef.force = true;
@@ -1785,9 +1787,9 @@
       tom: () => { relaySrc.intensity = 0; if (relayGlow) relayGlow.visible = false; if (relayLantern) relayLantern.traverse(o => { if (o.isMesh && o.material.emissive) o.material.emissiveIntensity = 0; }); Sound.knock(); setTimeout(() => say('The lantern has gone out. Tom kept it lit for days.', 6000), 700); },
       ch7: () => { S.fleeing = true; Sound.growl(1); shake = 1.4; torchDip = 1; setTimeout(() => say('Go back up. Now.', 6000), 1500); },
       rescue: () => { S.collapsePending = true; say('Everyone the rope reached came up. It did not reach everyone.', 7000); },
-      collapse: () => say('Karen has the children in the car. Navidson is still filming.', 7000),
+      collapse: () => { say('Karen has the children in the car. Navidson is still filming.', 7000); if (found.has('ch9')) regrow('empty'); }, // a save that read her tapes first goes on to Exploration #5 from here
       ch8: () => say('Karen left with the children. Something of hers is still in the bedroom.', 7000),
-      ch9: () => { S.explore5 = true; regrow('empty'); say('The doorway is still there. Navidson went back in alone.', 7000); },
+      ch9: () => { S.explore5 = true; if (found.has('rescue')) regrow('empty'); say('The doorway is still there. Navidson went back in alone.', 7000); },
       ch11: () => { unlock('letters', false); unlock('exhibits', false); unlock('index', false); }
     };
     /* your own exploration: what the counter kept */
@@ -2865,7 +2867,7 @@
       if (game.ended) return; // the end card is already up
       setTimeout(() => Sound.play('door_close', { gain: .8, rate: .9 }), 1400);
       setTimeout(() => {
-        card(`<p class="card-kicker">Ash Tree Lane</p><p>${store.get('endings', 0) > 0 ? 'The house is empty. It was empty last time too. It is not quite the same house.' : 'The house is empty. Whatever they left is still inside.'}</p><p class="card-help">${touch ? 'Drag on the left to walk, on the right to look. Tap what you find.' : 'Click to look around. Walk with WASD or ZQSD, turn with the arrow keys, Space to jump. Press E for what you find, J for the journal, I to invert the mouse. A gamepad works too.'}</p>`, 9000);
+        card(`<p class="card-kicker">Ash Tree Lane</p><p>${store.get('endings', 0) > 0 ? 'The house is empty. It was empty last time too. It is not quite the same house.' : 'The house is empty. Whatever they left is still inside.'}</p><p class="card-help">${touch ? 'Drag on the left to walk, on the right to look. Tap what you find.' : 'Click to look around. Walk with WASD or ZQSD, turn with the arrow keys, Space to jump. Press E for what you find, J for the journal, I to invert the mouse. A gamepad works too.'}</p>${store.get('endings', 0) > 0 && !found.has('ch3') ? '<p class="card-help">Been here before? Settings (O) can take you straight to the hallway.</p>' : ''}`, 9000);
       }, 400);
       if (found.size > 2 && !game.ended) setTimeout(() => say(S.resumed ? 'You are where you left off. The house remembers too.' : 'You have been here before. What you found is still in the journal.', 6000), S.resumed ? 3000 : 10000);
     }
